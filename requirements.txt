@@ -1,0 +1,6 @@
+requests
+pandas
+selenium
+pywin32
+statsmodels
+scipy
