@@ -2,7 +2,7 @@ import requests
 import json
 import os
 from config import API_URL
-MINUTE_DEVIDE = 60
+MINUTE_DEVIDE = 60*24
 class DataFetcher:
     def fetch(self):
         """

@@ -16,7 +16,7 @@ class FilterWaterLevel:
         thresh=THRESH
         cleaned = []
         half = window // 2
-        pdb.set_trace()  # Debugging breakpoint
+        #pdb.set_trace()  # Debugging breakpoint
         for i in range(len(records)):
             neighbors = []
             # Trường hợp đầu tiên → lấy phải và không lấy trái
@@ -43,9 +43,9 @@ class FilterWaterLevel:
             
             list_median = [getattr(it, 'water_level_0') for it in neighbors]
             med = median( list_median)
-            if abs( getattr(records[i],'water_level_0') - med) > THRESH:
+            if abs( getattr(records[i],'water_level_0') - med) > thresh:
                 self.logger.add_log("WARNING", f"Outlier detected at index {i}, value: {getattr(records[i],'water_level_0')}, median: {med}", tag="FilterWaterLevel")
-                cleaned.append(None)  # hoặc giá trị thay thế
+                #cleaned.append(None)  # hoặc giá trị thay thế
             else:
                 self.logger.add_log("INFO", f"Added at index {i} is within threshold, value: {getattr(records[i],'water_level_0')}, median: {med}", tag="FilterWaterLevel")
                 cleaned.append(records[i])
