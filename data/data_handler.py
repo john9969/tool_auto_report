@@ -31,7 +31,7 @@ class DataProcessor:
                 record = WaterRecord(
                     id=int(item.get("id", 0)),
                     serial_number=item.get("serial_number", ""),
-                    date_time=datetime.strptime(item.get("date_time", ""), "%Y-%m-%d %H:%M:%S"),
+                    date_time=datetime.strptime(item.get("created_at", ""), "%Y-%m-%d %H:%M:%S"),
                     water_level_0=int(item.get("water_lever_0", item.get("water_level_0", 0))),
                     water_level_1=int(item.get("water_lever_1", item.get("water_level_1", 0))),
                     water_level_2=int(item.get("water_lever_2", item.get("water_level_2", 0))),

@@ -17,7 +17,6 @@ def main():
     try:
         logger.add_log("INFO", "**********************START MAIN APP**********************", tag="Main")
         data = fetcher.fetch()
-        logger.add_log("INFO", f"Fetched data: {data}", tag="Main")
         if not data:
             logger.add_log("WARNING", "No data fetched", tag="Main")
             return
@@ -27,9 +26,11 @@ def main():
             logger.add_log("WARNING", "No records processed", tag="Main")
             print("No records processed")
             return
-        result = filterWaterLevel.fill_lack_value(result)
-        
-        logger.add_log("INFO", "Data processed successfully", tag="Main")
+        result = filterWaterLevel.detect_outlier_by_median(result)
+        for i in result:
+            logger.add_log("INFO", f"Record: {i}", tag="Main")
+            print(f"Record: {i}")
+            
         notifier.send(f"Result: {result}")
         automation.run()
     except Exception as e:

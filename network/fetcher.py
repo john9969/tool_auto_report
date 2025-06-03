@@ -2,6 +2,7 @@ import requests
 import json
 import os
 from config import API_URL
+MINUTE_DEVIDE = 60
 class DataFetcher:
     def fetch(self):
         """
@@ -13,7 +14,7 @@ class DataFetcher:
 
         logger = LoggerFactory()
         now = datetime.now()
-        begin = now - timedelta(days=1)
+        begin = now - timedelta(minutes=MINUTE_DEVIDE) # time range for fetching data
         serial_number = "TD_MW_0011"
 
         def build_params(dt_start, dt_end):
@@ -33,6 +34,7 @@ class DataFetcher:
             resp.raise_for_status()
             data = resp.json()
             #print(f"[DataFetcher] Received {len(data)} records")
+            logger.add_log("INFO", f"API: {API_URL}?{requests.compat.urlencode(params)}", tag="DataFetcher")
             logger.add_log("INFO", f"Received {len(data)} records", tag="DataFetcher")
             logger.add_log("INFO", f"Data: {data}", tag="DataFetcher")
             return data

@@ -27,7 +27,7 @@ class LoggerFactory:
 
         def write():
             log_entry = f"[{time_str}] [{log_type}] [{tag}] {content}\r\n"
-            print(f"[LoggerFactory] Writing log to {filename}: {log_entry.strip()}")
+            #print(f"[LoggerFactory] Writing log to {filename}: {log_entry.strip()}")
             with open(filename, "a", encoding="utf-8") as file:
                 file.write(log_entry)
 
