@@ -42,9 +42,9 @@ class DataFetcher:
         if begin.month == now.month:
             data = fetch_range(begin, now)
         else:
-            end_prev = begin.replace(day=1, hour=23, minute=59, second=59)
+            end_prev = begin.replace(hour=23, minute=59, second=59)
             data1 = fetch_range(begin, end_prev)
-            start_curr = end_prev.replace(day=1, hour=0, minute=0, second=0)
+            start_curr = now.replace(hour=0, minute=0, second=0)
             data2 = fetch_range(start_curr, now)
             data = data1 + data2
         return data
