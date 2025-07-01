@@ -5,7 +5,7 @@ from typing import Tuple
 from scipy.signal import find_peaks,savgol_filter
 from collections import defaultdict
 import numpy as np
-
+from data.filter import FilterWaterLevel
 from datetime import datetime
 from datetime import timedelta
 
@@ -47,6 +47,11 @@ def detect_absolute_peaks_troughs(
     times_np  = np.array([r.date_time for r in records], dtype='datetime64[m]')
     values_np = np.array([r.water_level_0 for r in records])
 
+    # 2) Lọc dữ liệu, loại bỏ gai
+    
+    filter = FilterWaterLevel()
+    values_np = filter.smooth_data_by_average(values_np)
+    
     # 3) Tìm relative peaks/troughs
     peaks   = find_peaks_custom(values_np,
                         windows     = window_sg,
@@ -288,6 +293,8 @@ def trend_detected_processes(
     Xử lý phát hiện xu hướng và đỉnh/đáy từ danh sách bản ghi.
     Trả về danh sách đỉnh, đáy và mã xu hướng.
     """
+    # 1) Filter
+    
     # 1) Phát hiện đỉnh/đáy
     absolute_peaks, absolute_troughs = detect_absolute_peaks_troughs(all_records)
     absolute_peaks, absolute_troughs= check_last_point(all_records, absolute_peaks, absolute_troughs, delta=10)

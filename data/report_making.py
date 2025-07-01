@@ -29,15 +29,26 @@ def update_peaks_troughs_json(
     """
     - Loads last-run peaks/troughs from JSON.
     - Filters out any rec.id already seen in the appropriate category.
-    - Saves THIS run’s peaks & troughs (fresh lists) back to JSON.
+    - Saves THIS runs peaks & troughs (fresh lists) back to JSON.
     - Returns only the new events.
     """
     # 1) Load last-run sets
     last_peaks, last_troughs = load_last_events(filename)
+    
+    # 2) Sort incoming events by datetime
+    sorted_candidates = sorted(filtered_new, key=lambda x: x[0].date_time)
 
-    # 2) Filter for genuinely new
+    # 3) Keep only those within the last 8 hours
+    cutoff = datetime.now() - timedelta(hours=8)
+    recent_candidates = [
+        (rec, kind)
+        for rec, kind in sorted_candidates
+        if rec.date_time > cutoff
+    ]
+
+    # 4) Filter for genuinely new
     new_events: List[Tuple[WaterRecord, str]] = []
-    for rec, kind in filtered_new:
+    for rec, kind in recent_candidates:
         if kind == "peak" and rec.id not in last_peaks:
             new_events.append((rec, kind))
         elif kind == "trough" and rec.id not in last_troughs:
@@ -52,11 +63,11 @@ def update_peaks_troughs_json(
                 f"Skipping {kind} at {rec.date_time.strftime('%Y-%m-%d %H:%M')} with ID {rec.id} already seenin file record_data."
             )
 
-    # 3) Prepare fresh lists for saving (overwrite)
+    # 5) Prepare fresh lists for saving (overwrite)
     fresh_peaks   = [rec.id for rec, kind in filtered_new if kind == "peak"]
     fresh_troughs = [rec.id for rec, kind in filtered_new if kind == "trough"]
 
-    # 4) Write JSON file (not appending)
+    # 6) Write JSON file (not appending)
     with open(filename, "w") as f:
         json.dump(
             {"peaks": fresh_peaks, "troughs": fresh_troughs},

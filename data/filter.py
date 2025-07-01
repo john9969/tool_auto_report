@@ -1,6 +1,7 @@
 from datetime import datetime,timedelta
 from logger.logger import LoggerFactory
 from data.data_handler import WaterRecord
+import numpy as np
 from config import DElTA
 from statistics import median
 WINDOW = 7
@@ -10,6 +11,58 @@ class FilterWaterLevel:
     def __init__(self):
         self.delta = DElTA
         self.logger = LoggerFactory()
+    def smooth_data_by_average(
+        self,
+        values_np: np.ndarray,
+        window: int = 3,
+        thresh: float = 15
+    ) -> np.ndarray:
+        """
+        Smooth the signal by replacing spikes that exceed a threshold
+        with the average of their neighbors.
+        """
+        n = len(values_np)
+        half = window // 2
+        smoothed = values_np.copy()
+
+        # Log start
+        start_msg = f"Starting smoothing: window={window}, thresh={thresh}, total_points={n}"
+        print(start_msg)
+        self.logger.add_log("INFO", start_msg, tag="Filter")
+
+        for i in range(n):
+            # determine neighbor bounds
+            start_idx = max(0, i - half)
+            end_idx   = min(n, i + half + 1)
+
+            # collect neighbors (excluding the point itself)
+            left_neighbors  = values_np[start_idx:i]
+            right_neighbors = values_np[i+1:end_idx]
+            neighbors = np.concatenate([left_neighbors, right_neighbors])
+
+            # if no neighbors, skip
+            if neighbors.size == 0:
+                continue
+
+            avg = neighbors.mean()
+            diff = abs(values_np[i] - avg)
+            if diff > thresh:
+                log_msg = (
+                    f"Outlier at index {i}: value={values_np[i]:.2f}, "
+                    f"neighbor_avg={avg:.2f}, diff={diff:.2f} > thresh"
+                )
+                print(log_msg)
+                self.logger.add_log("WARNING", log_msg, tag="Filter")
+                smoothed[i] = avg
+
+        end_msg = (
+            f"Finished smoothing data. "
+            f"Smoothed values: {smoothed.tolist()}"
+        )
+        print(end_msg)
+        self.logger.add_log("INFO", end_msg, tag="Filter")
+        return smoothed
+    
     def detect_outlier_by_median(self, records: list[WaterRecord]) -> list[WaterRecord]:
         window=WINDOW
         thresh=THRESH
