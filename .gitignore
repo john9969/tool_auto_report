@@ -1,0 +1,16 @@
+build/main/Analysis-00.toc
+build/main/COLLECT-00.toc
+build/main/EXE-00.toc
+build/main/PKG-00.toc
+build/main/PYZ-00.pyz
+build/main/base_library.zip
+build/main/main.exe
+build/main/main.pkg
+build/main/xref-main.html
+data/__pycache__/filter.cpython-311.pyc
+data/__pycache__/report_making.cpython-311.pyc
+data/__pycache__/trend_detected.cpython-311.pyc
+dist/main.exe
+network/__pycache__/fetcher.cpython-311.pyc
+logs
+__pycache__/
