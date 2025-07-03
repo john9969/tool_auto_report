@@ -8,7 +8,48 @@ import numpy as np
 from data.filter import FilterWaterLevel
 from datetime import datetime
 from datetime import timedelta
+from scipy.optimize import curve_fit
 
+def sine_wave(x, amplitude, frequency, phase_shift, vertical_shift):
+    return amplitude * np.sin(frequency * x + phase_shift) + vertical_shift
+
+def detect_sine_peaks_troughs(all_records: List[WaterRecord]) -> Tuple[np.ndarray, np.ndarray]:
+    data = [r.water_level_0 for r in all_records]
+    # 1) Smoothing data by Savitzky-Golay filter
+    LoggerFactory().add_log("INFO", "Step 1: Smoothing data by Savitzky-Golay filter", tag="SineDetection")
+    smoothed = savgol_filter(data, window_length=5, polyorder=1)
+    LoggerFactory().add_log("INFO", f"Smoothed data: {smoothed.tolist()}", tag="SineDetection")
+
+    # Bước 2: Fit data to a sine wave
+    LoggerFactory().add_log("INFO", "Step 2: Fitting data to a sine wave", tag="SineDetection")
+    x = np.arange(len(smoothed))
+    LoggerFactory().add_log("INFO", f"x values: {x.tolist()}", tag="SineDetection")
+    guess = [np.ptp(smoothed)/2, 2*np.pi/len(smoothed), 0, np.mean(smoothed)]
+    LoggerFactory().add_log("INFO", f"Initial guess for curve_fit: {guess}", tag="SineDetection")
+    params, _ = curve_fit(sine_wave, x, smoothed, p0=guess)
+    LoggerFactory().add_log("INFO", f"Fitted sine parameters: {params.tolist()}", tag="SineDetection")
+    fitted = sine_wave(x, *params)
+    LoggerFactory().add_log("INFO", f"Fitted sine values: {fitted.tolist()}", tag="SineDetection")
+
+    # Bước 3: Calcultate gradient to find slope
+    LoggerFactory().add_log("INFO", "Step 3: Calculating gradient to find slope", tag="SineDetection")
+    dy = np.gradient(fitted)
+    #LoggerFactory().add_log("INFO", f"Gradient (dy): {dy.tolist()}", tag="SineDetection")
+    slope = np.sign(dy)
+    #LoggerFactory().add_log("INFO", f"Slope (sign of dy): {slope.tolist()}", tag="SineDetection")
+
+    # Bước 4: Detect peaks and troughs from slope changes
+    LoggerFactory().add_log("INFO", "Step 4: Detecting peaks and troughs from slope changes", tag="SineDetection")
+    peaks = np.where((slope[:-1] > 0) & (slope[1:] < 0))[0]
+    troughs = np.where((slope[:-1] < 0) & (slope[1:] > 0))[0]
+    LoggerFactory().add_log("INFO", f"Peaks indices: {peaks.tolist()}", tag="SineDetection")
+    LoggerFactory().add_log("INFO", f"Troughs indices: {troughs.tolist()}", tag="SineDetection")
+    print(f"Peaks indices: {[all_records[i] for i in peaks]}")
+    print(f"Troughs indices: {[all_records[i] for i in troughs]}")
+    LoggerFactory().add_log("INFO", f"Peaks: {[all_records[i] for i in peaks]}", tag="SineDetection")
+    LoggerFactory().add_log("INFO", f"Troughs: {[all_records[i] for i in troughs]}", tag="SineDetection")
+    return peaks, troughs
+    
 def find_peaks_custom(signal: np.ndarray, windows: int, delta: int) -> np.ndarray:
     """
     Tìm vị trí các peak trong mảng signal.
@@ -41,25 +82,28 @@ def find_peaks_custom(signal: np.ndarray, windows: int, delta: int) -> np.ndarra
 def detect_absolute_peaks_troughs(
     records: List[WaterRecord],
     window_sg:  int     = 17,
-    delta_sg:   int = 15
+    delta_sg:   int = 50
 ) -> Tuple[List[WaterRecord], List[WaterRecord]]:
-    # 1) Chuẩn bị times/values
-    times_np  = np.array([r.date_time for r in records], dtype='datetime64[m]')
-    values_np = np.array([r.water_level_0 for r in records])
+    if 0:
+        # 1) Chuẩn bị times/values
+        times_np  = np.array([r.date_time for r in records], dtype='datetime64[m]')
+        values_np = np.array([r.water_level_0 for r in records])
 
-    # 2) Lọc dữ liệu, loại bỏ gai
-    
-    filter = FilterWaterLevel()
-    values_np = filter.smooth_data_by_average(values_np)
-    
-    # 3) Tìm relative peaks/troughs
-    peaks   = find_peaks_custom(values_np,
-                        windows     = window_sg,
-                        delta       = delta_sg)
-    troughs = find_peaks_custom(    -values_np,
-                        windows     = window_sg,
-                        delta       = delta_sg)
-
+        # 2) Lọc dữ liệu, loại bỏ gai
+        
+        filter = FilterWaterLevel()
+        values_np = filter.smooth_data_by_average(values_np)
+        detect_trend_raw = detect_total_trend(records,values_np)
+        # 3) Tìm relative peaks/troughs
+        peaks   = find_peaks_custom(values_np,
+                            windows     = window_sg,
+                            delta       = delta_sg)
+        troughs = find_peaks_custom(    -values_np,
+                            windows     = window_sg,
+                            delta       = delta_sg)
+    # 1) Using SIN wave detection
+    LoggerFactory().add_log("INFO", "Step 1: Detecting peaks and troughs using sine wave detection", tag="ReportMaking")    
+    peaks,troughs = detect_sine_peaks_troughs(records)
     
     absolute_peaks   = []
     absolute_troughs = []
@@ -111,8 +155,58 @@ def detect_absolute_peaks_troughs(
                 tag="ReportMaking"
             )
     return absolute_peaks, absolute_troughs
+def detect_total_trend(
+    records: List[WaterRecord],
+    smoothed: np.ndarray,
+    threshold_hours = 1
+) -> List[Tuple[int, str]]:
+    # Compute initial trend: True for upward, False for downward segments
+    
+    trend = ["up" if smoothed[i+1] > smoothed[i] else "down" for i in range(len(smoothed)-1)]
+    print(f"Initial trend: {trend}")
+    LoggerFactory().add_log("INFO", f"Initial trend: {trend}", tag="ReportMaking")
+    trend_list = []
+    for i in range(len(smoothed)-1):
+        trend_list.append((int(smoothed[i]), trend[i]))
+    # Thêm phần tử cuối, xu hướng giữ nguyên phần tử trước đó
+    trend_list.append((int(smoothed[-1]), trend[-1]))
+    print(f"Trend raw data: {trend_list}")
+    LoggerFactory().add_log("INFO", f"Trend raw data: {trend_list}", tag="ReportMaking")
+    
+    # Remove small trend runs shorter than threshold
+    run_start_idx = 0
+    while run_start_idx < len(trend):
+        run_end_idx = run_start_idx
 
-def trend_detected(
+        # Tìm vị trí kết thúc chuỗi trend liên tục cùng hướng
+        while run_end_idx < len(trend) and trend[run_end_idx] == trend[run_start_idx]:
+            run_end_idx += 1
+
+        # Thời gian bắt đầu và kết thúc chuỗi trend
+        start_time = records[run_start_idx].date_time
+        if run_end_idx < len(smoothed):
+            end_time = records[run_end_idx].date_time
+        else:
+            end_time = records[-1].date_time
+
+        duration_hours = (end_time - start_time).total_seconds() / 3600
+
+        # Nếu thời gian chuỗi quá ngắn và neighbors giống nhau thì thay đổi
+        if (0 < run_start_idx < run_end_idx < len(trend)
+                and duration_hours < threshold_hours
+                and trend[run_start_idx - 1] == trend[run_end_idx]):
+            for idx in range(run_start_idx, run_end_idx):
+                trend[idx] = trend[run_start_idx - 1]
+                trend_list[idx] = (trend_list[idx][0], trend[run_start_idx - 1])
+
+        # Chuyển sang chuỗi tiếp theo
+        run_start_idx = run_end_idx
+    print(f"Trend after removing short runs: {trend_list}")
+    LoggerFactory().add_log("INFO", f"Trend after removing short runs: {trend_list}", tag="ReportMaking")
+    return trend_list
+    
+    
+def detect_last_trend(
     all_records: List[WaterRecord],
     filtered : List[Tuple[WaterRecord, str]]
     ) -> str:
@@ -187,10 +281,10 @@ def check_last_point(
             summary_troughs = [(r.date_time.strftime('%Y-%m-%d %H:%M'), r.water_level_0) for r in absolute_troughs]
             LoggerFactory().add_log(
                 "INFO",
-                f"No new point within 3h. Peaks: {summary_peaks}, Troughs: {summary_troughs}",
+                f"Found new point within 3h. Peaks: {summary_peaks}, Troughs: {summary_troughs}",
                 tag="ReportMaking"
             )
-            print(f"No new point within 3h. Peaks: {summary_peaks}, Troughs: {summary_troughs}")
+            print(f"Found new point within 3h. Peaks: {summary_peaks}, Troughs: {summary_troughs}")
             return absolute_peaks, absolute_troughs
 
     # Xác định window 3h, Trường hợp không có peak hoặc trough nào 
@@ -273,13 +367,17 @@ def filter_peaks_troughs(
         while j < n and all_pt[j][1] == type_i:
             group.append(all_pt[j][0])
             j += 1
-
+        if(len(group) == 0):
+            i = j
+            continue
         # nếu là peak, chọn peak cao nhất; nếu trough, chọn trough thấp nhất
-        if type_i == 'peak':
+        if len(group) > 1 and type_i == 'peak':
+            
             best = max(group, key=lambda r: r.water_level_0)
-        else:
+            LoggerFactory().add_log("WARNING",f"Found dubplicate peak, choose the best: {best}")
+        elif len(group) > 1:
             best = min(group, key=lambda r: r.water_level_0)
-
+            LoggerFactory().add_log("WARNING",f"Found dubplicate trough, choose the best: {best}")
         filtered.append((best, type_i))
         # tiếp tục từ sau nhóm
         i = j
@@ -294,7 +392,7 @@ def trend_detected_processes(
     Trả về danh sách đỉnh, đáy và mã xu hướng.
     """
     # 1) Filter
-    
+    print(detect_sine_peaks_troughs(all_records))
     # 1) Phát hiện đỉnh/đáy
     absolute_peaks, absolute_troughs = detect_absolute_peaks_troughs(all_records)
     absolute_peaks, absolute_troughs= check_last_point(all_records, absolute_peaks, absolute_troughs, delta=10)
@@ -306,5 +404,5 @@ def trend_detected_processes(
     print(f"Absolute troughs after filtered: {absolute_troughs}")
     print(f"Filtered peaks/troughs: {filtered}")
     # 2) Phát hiện xu hướng
-    filtered, trend_code ,closest_record= trend_detected(all_records, filtered)
+    filtered, trend_code ,closest_record= detect_last_trend(all_records, filtered)
     return filtered, trend_code, closest_record

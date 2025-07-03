@@ -1,4 +1,5 @@
 from datetime import datetime,timedelta
+from scipy.signal import savgol_filter
 from logger.logger import LoggerFactory
 from data.data_handler import WaterRecord
 import numpy as np
@@ -15,7 +16,7 @@ class FilterWaterLevel:
         self,
         values_np: np.ndarray,
         window: int = 3,
-        thresh: float = 15
+        thresh: float = 3
     ) -> np.ndarray:
         """
         Smooth the signal by replacing spikes that exceed a threshold
@@ -26,34 +27,47 @@ class FilterWaterLevel:
         smoothed = values_np.copy()
 
         # Log start
-        start_msg = f"Starting smoothing: window={window}, thresh={thresh}, total_points={n}"
+        start_msg = (
+            f"Data before smoothing: {values_np.tolist()}"
+        )
         print(start_msg)
         self.logger.add_log("INFO", start_msg, tag="Filter")
+        smoothed = savgol_filter(values_np, window_length=3, polyorder= 1)
 
-        for i in range(n):
-            # determine neighbor bounds
-            start_idx = max(0, i - half)
-            end_idx   = min(n, i + half + 1)
+        # for i in range(n):
+        #     # determine neighbor bounds
+        #     start_idx = max(0, i - half)
+        #     end_idx   = min(n, i + half + 1)
 
-            # collect neighbors (excluding the point itself)
-            left_neighbors  = values_np[start_idx:i]
-            right_neighbors = values_np[i+1:end_idx]
-            neighbors = np.concatenate([left_neighbors, right_neighbors])
+        #     # collect neighbors (excluding the point itself)
+        #     left_neighbors  = values_np[start_idx:i]
+        #     right_neighbors = values_np[i+1:end_idx]
+        #     neighbors = np.concatenate([left_neighbors, right_neighbors])
 
-            # if no neighbors, skip
-            if neighbors.size == 0:
-                continue
-
-            avg = neighbors.mean()
-            diff = abs(values_np[i] - avg)
-            if diff > thresh:
-                log_msg = (
-                    f"Outlier at index {i}: value={values_np[i]:.2f}, "
-                    f"neighbor_avg={avg:.2f}, diff={diff:.2f} > thresh"
-                )
-                print(log_msg)
-                self.logger.add_log("WARNING", log_msg, tag="Filter")
-                smoothed[i] = avg
+        #     # if no neighbors, skip
+        #     if neighbors.size == 0:
+        #         continue
+        #     # sort full window and check if current point is extreme
+             
+        #     window_vals = values_np[start_idx:end_idx]
+        #     sorted_win = np.sort(window_vals)
+        #     # position of current value in sorted window
+        #     pos = np.where(sorted_win == values_np[i])[0][0]
+        #     size = sorted_win.size
+        #     # skip if not at an extreme (min or max)
+        #     if 0 < pos < size - 1:
+        #         continue
+                    
+        #     avg = neighbors.mean()
+        #     diff = abs(values_np[i] - avg)
+        #     if diff > thresh:
+        #         log_msg = (
+        #             f"Outlier at index {i}: value={values_np[i]:.2f}, "
+        #             f"neighbor_avg={avg:.2f}, diff={diff:.2f} > thresh"
+        #         )
+        #         print(log_msg)
+        #         self.logger.add_log("WARNING", log_msg, tag="Filter")
+        #         smoothed[i] = avg
 
         end_msg = (
             f"Finished smoothing data. "
@@ -68,22 +82,24 @@ class FilterWaterLevel:
         thresh=THRESH
         cleaned = []
         half = window // 2
+        water_before = [r.water_level_0 for r in records]
+        self.logger.add_log("INFO",f"Before detect outlines by median data: {water_before}")
         #pdb.set_trace()  # Debugging breakpoint
         for i in range(len(records)):
             neighbors = []
             # Trường hợp đầu tiên → lấy phải và không lấy trái
             if i < half:
-                self.logger.add_log("INFO", f"Processing left border, index: {i}", tag="FilterWaterLevel")
+                #self.logger.add_log("INFO", f"Processing left border, index: {i}", tag="FilterWaterLevel")
                 right = min(len(records), i + window)
                 neighbors = records[i+1:right]
             # Trường hợp cuối cùng → lấy trái và không lấy phải
             elif i >= len(records) - half:
-                self.logger.add_log("INFO", f"Processing right border, index: {i}", tag="FilterWaterLevel")
+                #self.logger.add_log("INFO", f"Processing right border, index: {i}", tag="FilterWaterLevel")
                 left = max(0, i - window)
                 neighbors = records[left:i]
             # Trường hợp bình thường → lấy trái và phải
             else:
-                self.logger.add_log("INFO", f"Processing middle, index: {i}", tag="FilterWaterLevel")
+                #self.logger.add_log("INFO", f"Processing middle, index: {i}", tag="FilterWaterLevel")
                 left = i - half
                 right = i + half + 1
                 neighbors = records[left:i] + records[i+1:right]
@@ -99,10 +115,11 @@ class FilterWaterLevel:
                 self.logger.add_log("WARNING", f"Outlier detected at index {i}, value: {getattr(records[i],'water_level_0')}, median: {med}", tag="FilterWaterLevel")
                 #cleaned.append(None)  # hoặc giá trị thay thế
             else:
-                self.logger.add_log("INFO", f"Added at index {i} is within threshold, value: {getattr(records[i],'water_level_0')}, median: {med}", tag="FilterWaterLevel")
+                #self.logger.add_log("INFO", f"Added at index {i} is within threshold, value: {getattr(records[i],'water_level_0')}, median: {med}", tag="FilterWaterLevel")
                 cleaned.append(records[i])
+        water_after = [r.water_level_0 for r in cleaned]
+        self.logger.add_log("INFO",f"After detect outlines by median data: {water_after}")
         self.logger.add_log("INFO", f"Data after fill, total records: {len(cleaned)}", tag="FilterWaterLevel")
-        self.logger.add_log("INFO", f"Filtered data: {cleaned}", tag="FilterWaterLevel")
         return cleaned
     
     def fill_lack_value(self, records: list[WaterRecord]) -> list[WaterRecord]:
