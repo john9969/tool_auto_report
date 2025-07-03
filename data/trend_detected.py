@@ -374,11 +374,16 @@ def filter_peaks_troughs(
         if len(group) > 1 and type_i == 'peak':
             
             best = max(group, key=lambda r: r.water_level_0)
+            filtered.append((best, type_i))
             LoggerFactory().add_log("WARNING",f"Found dubplicate peak, choose the best: {best}")
         elif len(group) > 1:
             best = min(group, key=lambda r: r.water_level_0)
             LoggerFactory().add_log("WARNING",f"Found dubplicate trough, choose the best: {best}")
-        filtered.append((best, type_i))
+            filtered.append((best, type_i))
+        else:
+            # nếu chỉ có một bản ghi trong nhóm, thêm vào filtered
+            filtered.append((group[0], type_i))
+            LoggerFactory().add_log("INFO",f"Adding single record: {group[0]} as {type_i}")
         # tiếp tục từ sau nhóm
         i = j
 
