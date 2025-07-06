@@ -8,6 +8,9 @@ SERIAL_NUMBER = "74194"
 
 import os
 from typing import List, Tuple
+
+
+    
 def load_last_events(filename: str = "record_data.json") -> Tuple[Set[int], Set[int]]:
     """
     1. Opens filename and reads its entire contents as a string.

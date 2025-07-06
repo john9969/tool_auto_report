@@ -1,7 +1,7 @@
 import requests
 import json
 from config import API_URL
-MINUTE_DEVIDE = 60*24
+MINUTE_DEVIDE = 60*24*4
 class DataFetcher:
     def fetch(self):
         """
@@ -40,14 +40,28 @@ class DataFetcher:
 
         # Single or split request
         if begin.month == now.month:
-            data = fetch_range(begin, now)
+            data_pack = fetch_range(begin, now)
         else:
-            end_prev = begin.replace(hour=23, minute=59, second=59)
-            data1 = fetch_range(begin, end_prev)
-            start_curr = now.replace(hour=0, minute=0, second=0)
-            data2 = fetch_range(start_curr, now)
-            data = data1 + data2
-        return data
+            if(begin.month == 12):
+                data_pack_1_end_date = datetime( year=begin.year - 1, month=12, day=31, hour=23, minute=59, second=59)
+                data_pack_1_begin_date = begin
+                data_pack_2_begin_date = now.replace(month=1, year=now.year, day=1, hour=0, minute=0, second=0)
+                data_pack_2_end_date = now
+            elif ( begin.month == 1 or begin.month == 3 or begin.month == 5 or begin.month == 7 or begin.month == 8 or begin.month == 10 ):
+                data_pack_1_end_date = begin.replace(day=31, hour=23, minute=59, second=59)
+                data_pack_1_begin_date = begin
+                data_pack_2_begin_date = now.replace(day=1, hour=0, minute=0, second=0)
+                data_pack_2_end_date = now
+            else:
+                data_pack_1_end_date = begin.replace(day=30, hour=23, minute=59, second=59)
+                data_pack_1_begin_date = begin
+                data_pack_2_begin_date = now.replace(day=1, hour=0, minute=0, second=0)
+                data_pack_2_end_date = now
+                
+            data_pack1 = fetch_range(data_pack_1_begin_date, data_pack_1_end_date)
+            data_pack2 = fetch_range(data_pack_2_begin_date, data_pack_2_end_date)
+            data_pack= data_pack1 + data_pack2
+        return data_pack
 
     def fetch_test(self, file_path="test/data_test.txt"):
         with open(file_path, "r", encoding="utf-8") as f:
