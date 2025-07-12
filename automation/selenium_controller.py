@@ -11,7 +11,7 @@ LINK = 'http://madien2.kttvdb.vn/content/users/login.asp?ret_page=../../content/
 LINK_REPORT = "http://madien2.kttvdb.vn/content/code/"
 USER = 'tvtrieuduong'
 PASS = '91376'
-
+ZALO_CHAT_NAME ="report_tvtrieuduong"
 
 def login(user: str, password: str, link: str):
     """Open Chromium headless, navigate to link, fill credentials, click logon, and return the driver."""
@@ -86,7 +86,7 @@ def navigate_to_add_matv(driver):
         print(f"[Navigate] Going to {full_url}")
         driver.get(full_url)
         print("[Navigate] Reached add_maTV page")
-        time.sleep(10)
+        time.sleep(5)
         return driver,True
     except TimeoutException:
         print(f"[Login] Timeout loading page")
@@ -143,12 +143,48 @@ def fill_content_and_submit(driver, content: str):
         print(f"[Fill] Element not found: {e}")
         return driver,False
 
+def send_zalo_message(driver: webdriver.Chrome,message: str):
+    print("[Zalo] Navigating to chat.zalo.me")
+    driver.get('https://chat.zalo.me')
+    time.sleep(5)  # wait for chat list
 
+    print(f"[Zalo] Locating chat item: {ZALO_CHAT_NAME}")
+    items = driver.find_elements(By.CLASS_NAME, 'truncate')
+    for item in items:
+        if item.text.strip() == ZALO_CHAT_NAME:
+            item.click()
+            print("[Zalo] Chat selected")
+            break
+    else:
+        print("[Zalo] Chat not found")
+        return
+
+    time.sleep(3)
+    print("[Zalo] Locating message input container")
+    input_container = driver.find_element(By.ID, 'chat-input-container-id')
+    input_container.click()
+    input_container.send_keys(message)
+    input_container.send_keys(Keys.ENTER)
+    print("[Zalo] Message sent")
+    
 def selenium_controller(ma_dien_bao:str):
     print("[Main] Starting script")
-    driver,_ = login(USER, PASS, LINK)
-    driver,_ = navigate_to_add_matv (driver)
-    driver,_ = select_current_hour_and_confirm(driver)
-    driver,_ = fill_content_and_submit(driver, content= ma_dien_bao)
+    driver,stt = login(USER, PASS, LINK)
+    if stt == False:
+        send_zalo_message("[Web Error]:" + ma_dien_bao)
+        return 
+    driver,stt = navigate_to_add_matv (driver)
+    if stt == False:
+        send_zalo_message("[Web Error]:" + ma_dien_bao)
+        return 
+    driver,stt = select_current_hour_and_confirm(driver)
+    if stt == False:
+        send_zalo_message("[Web Error]:" + ma_dien_bao)
+        return 
+    driver,stt = fill_content_and_submit(driver, content= ma_dien_bao)
+    if stt == False:
+        send_zalo_message("[Web Error]:" + ma_dien_bao)
+        return
+    
     print("[Main] Script completed, quitting driver")
     driver.quit()
