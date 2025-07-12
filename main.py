@@ -2,7 +2,7 @@ from network.fetcher import DataFetcher
 from data.data_handler import DataProcessor
 from logger.logger import LoggerFactory
 # from notify.telegram_bot import TelegramNotifier
-from automation.selenium_controller import SeleniumController
+from automation.selenium_controller import selenium_controller
 from data.filter import FilterWaterLevel
 from data.trend_detected import *
 from data.report_making import make_report
@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 logger = LoggerFactory()
 fetcher = DataFetcher()
 processor = DataProcessor()
-automation = SeleniumController()
 filterWaterLevel = FilterWaterLevel()
 def run_every_hour(task_func):
 
@@ -59,6 +58,7 @@ def main():
         else:
             report = "checking"
         payload = {'text': report}
+        selenium_controller(payload)
         try:
             response = requests.post("https://donuoctrieuduong.xyz/water_level_api/test/update_water.php", json=payload)
             response.raise_for_status()  # ném exception nếu status != 2xx
