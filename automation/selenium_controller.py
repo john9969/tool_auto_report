@@ -134,9 +134,10 @@ def fill_content_and_submit(driver, content: str):
         submit_btn = ma_tr_el.find_element(By.XPATH, 'following::input[@type="submit"][1]')
         print("[Fill] Clicking submit button")
         time.sleep(1)
-        if(content != "checking"):
-            submit_btn.click()
-        print("[Fill] Submit button clicked")
+        if content != "checking":
+            print("[Fill] Content is not 'checking', clicking submit")
+            #submit_btn.click()
+        print(f"[fill] not submitting content: {content}")
         return driver,True
     except NoSuchElementException as e:
         print(f"[Fill] Element not found: {e}")
