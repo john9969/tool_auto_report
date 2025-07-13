@@ -54,11 +54,11 @@ def main():
         print(f"Report: {report}")
         logger.add_log("INFO", f"report:{report}", tag="Main")
         if(datetime.now().hour == 1 or datetime.now().hour == 7 or datetime.now().hour == 13 or datetime.now().hour == 19):
-            report = f"Điện báo lúc {datetime.now().strftime('%H')} giờ: " + report
+            report
         else:
             report = "checking"
         payload = {'text': report}
-        selenium_controller(payload)
+        selenium_controller(report)
         try:
             response = requests.post("https://donuoctrieuduong.xyz/water_level_api/test/update_water.php", json=payload)
             response.raise_for_status()  # ném exception nếu status != 2xx

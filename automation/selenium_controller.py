@@ -170,6 +170,7 @@ def send_zalo_message(driver: webdriver.Chrome,message: str):
 def selenium_controller(ma_dien_bao:str):
     print("[Main] Starting script")
     driver,stt = login(USER, PASS, LINK)
+    print(f"[Main] Login status: {stt}")
     if stt == False:
         send_zalo_message("[Web Error]:" + ma_dien_bao)
         return 
