@@ -70,13 +70,11 @@ def main():
             processor.clear()  # Xoá bộ đệm sau khi xử lý xong
             return None
         
-        #notifier.send(f"Result: {result}")
-        #automation.run()
     except Exception as e:
         logger.add_log("BUG", str(e), tag="Main")
         processor.clear()
 
 if __name__ == "__main__":
  #   startup.add_to_startup()
-    #run_every_hour(main)
-    main()
+    run_every_hour(main)
+    #main()

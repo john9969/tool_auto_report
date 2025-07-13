@@ -13,7 +13,7 @@ USER = 'tvtrieuduong'
 PASS = '91376'
 ZALO_CHAT_NAME ="report_tvtrieuduong"
 
-def login(user: str, password: str, link: str):
+def login(user: str, password: str, link: str)-> tuple[webdriver.Chrome | None, bool]:
     """Open Chromium headless, navigate to link, fill credentials, click logon, and return the driver."""
     print(f"[Login] Starting login process for user: {user}")
 
@@ -67,17 +67,17 @@ def login(user: str, password: str, link: str):
     except TimeoutException:
         print(f"[Login] Timeout loading page")
         driver.quit()
-        return driver,False
+        return None,False
     except WebDriverException as e:
         print(f"[Login] WebDriver error")
         driver.quit()
-        return driver,False
+        return None,False
     except Exception as e:
         print(f"[Login] Unexpected error")
         driver.quit()
-        return driver,False
+        return None,False
         
-def navigate_to_add_matv(driver):
+def navigate_to_add_matv(driver)-> tuple[webdriver.Chrome | None, bool]:
     try:
         today = datetime.date.today().strftime('%Y/%-m/%-d')
         path = f"add_maTV.asp?page_type=0&idd=104&ngay={today}&ngayxem={today}"
@@ -91,17 +91,17 @@ def navigate_to_add_matv(driver):
     except TimeoutException:
         print(f"[Login] Timeout loading page")
         driver.quit()
-        return driver,False
+        return None,False
     except WebDriverException as e:
         print(f"[Login] WebDriver error")
         driver.quit()
-        return driver,False
+        return None,False
     except Exception as e:
         print(f"[Login] Unexpected error")
         driver.quit()
-        return driver,False
+        return None,False
 
-def select_current_hour_and_confirm(driver):
+def select_current_hour_and_confirm(driver)-> tuple[webdriver.Chrome | None, bool]:
     now = datetime.datetime.now()
     hour = now.hour if now.hour != 0 else 24
     print(f"[Select] Current hour: {hour}")
@@ -117,9 +117,10 @@ def select_current_hour_and_confirm(driver):
         return driver,True
     except NoSuchElementException as e:
         print(f"[Select] Element not found: {e}")
-        return driver,False
+        driver.quit()
+        return None,False
 
-def fill_content_and_submit(driver, content: str):
+def fill_content_and_submit(driver, content: str)-> tuple[webdriver.Chrome | None, bool]:
     try:
         print(f"[Fill] Locating 'noidungmadien' field")
         field = driver.find_element(By.NAME, 'noidungmadien')
@@ -136,17 +137,30 @@ def fill_content_and_submit(driver, content: str):
         time.sleep(1)
         if content != "checking":
             print("[Fill] Content is not 'checking', clicking submit")
-            #submit_btn.click()
-        print(f"[fill] not submitting content: {content}")
-        return driver,True
+            submit_btn.click()
+        print(f"[fill] submitted content: {content}")
+        driver.quit()
+        return None,True
     except NoSuchElementException as e:
         print(f"[Fill] Element not found: {e}")
-        return driver,False
+        driver.quit()
+        return None,False
 
-def send_zalo_message(driver: webdriver.Chrome,message: str):
+def send_zalo_message(message: str):
     print("[Zalo] Navigating to chat.zalo.me")
+    options = Options()
+    options.binary_location = '/usr/bin/chromium-browser'
+    #options.add_argument('--headless')
+    options.add_argument('--user-data-dir=/home/tuan/.config/chromium')
+    options.add_argument('--profile-directory=Default')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    service = Service('/usr/bin/chromedriver')  # updated path
+
+    print("[Login] Initializing Chromium driver (headless)")
+    driver = webdriver.Chrome(service=service, options=options)
     driver.get('https://chat.zalo.me')
-    time.sleep(5)  # wait for chat list
+    time.sleep(20)  # wait for chat list
 
     print(f"[Zalo] Locating chat item: {ZALO_CHAT_NAME}")
     items = driver.find_elements(By.CLASS_NAME, 'truncate')
@@ -161,10 +175,15 @@ def send_zalo_message(driver: webdriver.Chrome,message: str):
 
     time.sleep(3)
     print("[Zalo] Locating message input container")
-    input_container = driver.find_element(By.ID, 'chat-input-container-id')
+    input_container = driver.find_element(By.ID, 'input_line_0')
     input_container.click()
     input_container.send_keys(message)
-    input_container.send_keys(Keys.ENTER)
+    time.sleep(5)
+    send_btn = driver.find_element(By.CSS_SELECTOR, '[class*="send-msg-btn"]')
+    send_btn.click()
+    print("[Zalo] Send button clicked")
+    time.sleep(5)
+    driver.quit()
     print("[Zalo] Message sent")
     
 def selenium_controller(ma_dien_bao:str):
@@ -172,20 +191,21 @@ def selenium_controller(ma_dien_bao:str):
     driver,stt = login(USER, PASS, LINK)
     print(f"[Main] Login status: {stt}")
     if stt == False:
-        send_zalo_message("[Web Error]:" + ma_dien_bao)
+        print(f"[Main] Report By zalo")
+        send_zalo_message("[Web Error] Ma dien bao: " + ma_dien_bao)
         return 
     driver,stt = navigate_to_add_matv (driver)
     if stt == False:
-        send_zalo_message("[Web Error]:" + ma_dien_bao)
+        send_zalo_message("[Web Error] Ma dien bao: :" + ma_dien_bao)
         return 
     driver,stt = select_current_hour_and_confirm(driver)
     if stt == False:
-        send_zalo_message("[Web Error]:" + ma_dien_bao)
+        send_zalo_message("[Web Error] Ma dien bao: :" + ma_dien_bao)
         return 
     driver,stt = fill_content_and_submit(driver, content= ma_dien_bao)
     if stt == False:
-        send_zalo_message("[Web Error]:" + ma_dien_bao)
+        send_zalo_message("[Web Error] Ma dien bao: :" + ma_dien_bao)
         return
     
     print("[Main] Script completed, quitting driver")
-    driver.quit()
+    
