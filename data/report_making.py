@@ -132,12 +132,14 @@ def make_report(
         if(rec[1] == 'peak'):
             if peaks_and_troughs_str:
                 peaks_and_troughs_str += " "
-            peaks_and_troughs_str += f"{rec[0].date_time.strftime('%H%M')} 8{rec[0].water_level_0 // 10:04d}"
+            round_time = rec[0].date_time.replace(minute = ((rec[0].date_time.minute // 10) * 10))
+            peaks_and_troughs_str += f"{round_time.strftime('%H%M')} 8{rec[0].water_level_0 // 10:04d}"
             print(f"add peak at {rec[0].date_time.strftime('%H:%M')} → Water_Level(0) = {rec[0].water_level_0}")
         else:
             if peaks_and_troughs_str:
                 peaks_and_troughs_str += " "
-            peaks_and_troughs_str += f"{rec[0].date_time.strftime('%H%M')} 9{rec[0].water_level_0 // 10:04d}"
+            round_time = rec[0].date_time.replace(hour = rec[0].date_time.hour, minute = ((rec[0].date_time.minute // 10) * 10))
+            peaks_and_troughs_str += f"{round_time.strftime('%H%M')} 9{rec[0].water_level_0 // 10:04d}"
             print(f"add trough at {rec[0].date_time.strftime('%H:%M')} → Water_Level(0) = {rec[0].water_level_0}")
     # 2) Create report string
     print("Creating report string:")
