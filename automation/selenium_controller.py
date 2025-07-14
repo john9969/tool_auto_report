@@ -187,25 +187,36 @@ def send_zalo_message(message: str):
     print("[Zalo] Message sent")
     
 def selenium_controller(ma_dien_bao:str):
-    print("[Main] Starting script")
-    driver,stt = login(USER, PASS, LINK)
-    print(f"[Main] Login status: {stt}")
-    if stt == False:
-        print(f"[Main] Report By zalo")
-        send_zalo_message("[Web Error] Ma dien bao: " + ma_dien_bao)
-        return 
-    driver,stt = navigate_to_add_matv (driver)
-    if stt == False:
+    stt = False
+    times_request = 3
+    while not stt and times_request > 0: 
+        print("[Main] Starting script")
+        driver,stt = login(USER, PASS, LINK)
+        if stt == False:
+            print(f"[Main] Report failed, retrying in 60 seconds")
+            time.sleep(60)
+            times_request -= 1
+            continue 
+        driver,stt = navigate_to_add_matv (driver)
+        if stt == False:
+            print(f"[Main] Report failed, retrying in 60 seconds")
+            time.sleep(60)
+            times_request -= 1
+            continue 
+        driver,stt = select_current_hour_and_confirm(driver)
+        if stt == False:
+            print(f"[Main] Report failed, retrying in 60 seconds")
+            time.sleep(60)
+            times_request -= 1
+            continue 
+        driver,stt = fill_content_and_submit(driver, content= ma_dien_bao)
+        if stt == False:
+            print(f"[Main] Report failed, retrying in 60 seconds")
+            time.sleep(60)
+            times_request -= 1
+            continue 
+    if not stt:
+        print("[Main] Failed to complete task after multiple attempts")
         send_zalo_message("[Web Error] Ma dien bao: :" + ma_dien_bao)
-        return 
-    driver,stt = select_current_hour_and_confirm(driver)
-    if stt == False:
-        send_zalo_message("[Web Error] Ma dien bao: :" + ma_dien_bao)
-        return 
-    driver,stt = fill_content_and_submit(driver, content= ma_dien_bao)
-    if stt == False:
-        send_zalo_message("[Web Error] Ma dien bao: :" + ma_dien_bao)
-        return
-    
     print("[Main] Script completed, quitting driver")
-    
+    times_request = 3
