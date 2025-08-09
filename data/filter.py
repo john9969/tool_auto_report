@@ -1,13 +1,13 @@
 from datetime import datetime,timedelta
 from scipy.signal import savgol_filter
 from logger.logger import LoggerFactory
-from data.data_handler import WaterRecord
+from data.data_process import WaterRecord
 import numpy as np
 from config import DElTA
 from statistics import median
 WINDOW = 7
 THRESH = 300
-MAX_WATER_LEVEL = 9000  # Maximum water level to consider
+MAX_WATER_LEVEL = 20000  # Maximum water level to consider
 class FilterWaterLevel:
     def __init__(self):
         self.delta = DElTA

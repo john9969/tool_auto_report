@@ -1,12 +1,14 @@
-from typing import List, Tuple
-from data.data_handler import WaterRecord 
+from typing import List, Tuple, Union, Optional
+from data.data_process import WaterRecord 
 from logger.logger import LoggerFactory
 from typing import Tuple
 from scipy.signal import find_peaks,savgol_filter
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 from collections import defaultdict
 import numpy as np
 from data.filter import FilterWaterLevel
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from datetime import timedelta
 
     
@@ -44,19 +46,27 @@ def write_chart(raw_value:np.ndarray ,
                 smooth_value:np.ndarray,
                 peaks:np.ndarray,
                 troughs:np.ndarray,
+                times: np.ndarray
                 ) -> None:
-    """
-    Saves a numpy array as an image file.
-    """
-    from matplotlib import pyplot as plt
-    
-    plt.plot(raw_value, label='Raw Data')
-    plt.plot(smooth_value, label='Smoothed Data')
-    plt.plot(peaks, raw_value[peaks], "ro", label="Peaks")
-    plt.plot(troughs, raw_value[troughs], "go", label="Troughs")
-    plt.legend()
-    plt.grid(True)
-    plt.title("Chart of Water Level with Peaks and Troughs")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(times, raw_value, label="Raw", marker='o')
+    ax.plot(times, smooth_value, label="Smooth", linestyle='--')
+
+    ax.plot([times[i] for i in peaks], [raw_value[i] for i in peaks],
+            linestyle='None', marker='^', markersize=10, markeredgewidth=0.8, zorder=3, label='Peaks')
+
+    ax.plot([times[i] for i in troughs], [raw_value[i] for i in troughs],
+            linestyle='None', marker='v', markersize=10, markeredgewidth=0.8, zorder=3, label='Troughs')
+
+    # Format trục X để hiển thị ngày + giờ
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m %H:%M'))
+    fig.autofmt_xdate(rotation=45)
+
+    ax.set_xlabel("Thời gian")
+    ax.set_ylabel("Mực nước")
+    ax.legend()
+    ax.grid(True)
+
     plt.show()
     
 def detect_absolute_peaks_troughs(
@@ -163,14 +173,147 @@ def detect_absolute_peaks_troughs(
                 print(f"Absolute trough at: {records[abs_trough_index].date_time.strftime('%Y-%m-%d %H:%M')}  →  {records[abs_trough_index].water_level_0}")   
     return np.array( absolute_peaks_indices), np.array(absolute_troughs_indices)
 
-    
+class ReportPoint:
+    water_level: int
+    trend: int           # 1 = downtrend (trước đó gần nhất là peak), 2 = uptrend (còn lại)
+    date_time: datetime
+    def __init__(self, water_level, trend, date_time ):
+        self.date_time = date_time
+        self.trend = trend
+        self.water_level = water_level
+FilteredItem = Tuple[Union[int, WaterRecord], str]  # ('peak' | 'trough')
+def _naive(dt: datetime) -> datetime:
+    """Chuyển datetime về dạng naive để so sánh an toàn."""
+    return dt.replace(tzinfo=None)
+
+def _build_dt_index(all_records: List[WaterRecord]) -> dict:
+    """Map datetime (naive) -> index đầu tiên gặp."""
+    m = {}
+    for i, r in enumerate(all_records):
+        dt = _naive(r.date_time)
+        if dt not in m:
+            m[dt] = i
+    return m
+
+def _resolve_index(pos: Union[int, WaterRecord], dt_index: dict, all_records: List[WaterRecord]) -> Optional[int]:
+    """Lấy index từ pos (int hoặc WaterRecord)."""
+    if isinstance(pos, int):
+        return pos if 0 <= pos < len(all_records) else None
+    # pos là WaterRecord: dò theo datetime
+    idx = dt_index.get(_naive(pos.date_time))
+    return idx
+
+def _sorted_filtered_indices(filtered: List[FilteredItem], dt_index: dict, all_records: List[WaterRecord]) -> List[Tuple[int, str]]:
+    """Chuẩn hóa filtered về (idx, label) và sort tăng dần theo idx."""
+    out: List[Tuple[int, str]] = []
+    for pos, label in filtered:
+        idx = _resolve_index(pos, dt_index, all_records)
+        if idx is not None and label in ("peak", "trough"):
+            out.append((idx, label))
+    out.sort(key=lambda x: x[0])
+    return out
+
+def _find_prev_label(sorted_filtered: List[Tuple[int, str]], idx: int) -> Optional[str]:
+    """Tìm nhãn của điểm (peak/trough) gần nhất đứng TRƯỚC idx."""
+    # Vì sorted tăng dần, ta đi từ cuối về đầu đến khi gặp idx' < idx
+    for i in range(len(sorted_filtered) - 1, -1, -1):
+        j, label = sorted_filtered[i]
+        if j < idx:
+            return label
+    return None
+
+def _pick_first_in_window(all_records: List[WaterRecord], start: datetime, end: datetime) -> Optional[int]:
+    """
+    Chọn index của record ĐẦU TIÊN (theo thời gian) nằm trong [start, end].
+    """
+    start_n = _naive(start)
+    end_n = _naive(end)
+    # lọc và lấy sớm nhất
+    candidates = [(i, _naive(r.date_time)) for i, r in enumerate(all_records) if start_n <= _naive(r.date_time) <= end_n]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: x[1])  # sort theo thời gian tăng dần
+    return candidates[0][0]
+
+def _pick_latest(all_records: List[WaterRecord]) -> Optional[int]:
+    """Chọn index của record mới nhất (theo thời gian)."""
+    if not all_records:
+        return None
+    return max(range(len(all_records)), key=lambda i: _naive(all_records[i].date_time))
+
+def _trend_from_prev_label(prev_label: Optional[str]) -> int:
+    """Quy đổi nhãn trước đó sang trend."""
+    if prev_label == "peak":
+        return 1  # downtrend
+    elif prev_label == "trough":
+        return 2  # uptrend
+    return 2      # mặc định uptrend nếu không tìm thấy (bạn có thể đổi sang 0 nếu muốn)
+
+def prepare_points(
+    all_records: List[WaterRecord],
+    filtered: List[FilteredItem]
+) -> List[ReportPoint]:
+    """
+    Tạo 3 điểm báo cáo:
+      - Điểm 1: now - 4h -> lấy bản ghi đầu tiên trong cửa sổ [now-4h, now]
+      - Điểm 2: now - 2h -> tương tự
+      - Điểm 3: bản ghi mới nhất
+    Trend: dựa trên điểm peak/trough gần nhất đứng TRƯỚC vị trí record trong all_records:
+           peak -> trend=1 (down), trough -> trend=2 (up)
+    """
+    if not all_records:
+        return []
+
+    now = datetime.now()  # dùng naive để tránh lỗi subtract aware/naive
+
+    dt_index = _build_dt_index(all_records)
+    sorted_filtered = _sorted_filtered_indices(filtered, dt_index, all_records)
+
+    points: List[ReportPoint] = []
+
+    # Điểm 1: cửa sổ 4 giờ
+    idx1 = _pick_first_in_window(all_records, now - timedelta(hours=4), now)
+    if idx1 is not None:
+        rec1 = all_records[idx1]
+        prev_label = _find_prev_label(sorted_filtered, idx1)
+        points.append(ReportPoint(
+            water_level=rec1.water_level_0,
+            trend=_trend_from_prev_label(prev_label),
+            date_time=_naive(rec1.date_time)
+        ))
+
+    # Điểm 2: cửa sổ 2 giờ
+    idx2 = _pick_first_in_window(all_records, now - timedelta(hours=2), now)
+    if idx2 is not None:
+        rec2 = all_records[idx2]
+        prev_label = _find_prev_label(sorted_filtered, idx2)
+        points.append(ReportPoint(
+            water_level=rec2.water_level_0,
+            trend=_trend_from_prev_label(prev_label),
+            date_time=_naive(rec2.date_time)
+        ))
+
+    # Điểm 3: bản ghi mới nhất
+    idx3 = _pick_latest(all_records)
+    if idx3 is not None:
+        rec3 = all_records[idx3]
+        prev_label = _find_prev_label(sorted_filtered, idx3)
+        points.append(ReportPoint(
+            water_level=rec3.water_level_0,
+            trend=_trend_from_prev_label(prev_label),
+            date_time=_naive(rec3.date_time)
+        ))
+
+    return points
+
+
 def detect_last_trend(
     all_records: List[WaterRecord],
     filtered : List[Tuple[WaterRecord, str]]
     ) -> str:
     closest_record = min(
         all_records,
-        key=lambda record: abs((record.date_time -  datetime.now()).total_seconds())
+        key=lambda record: abs((record.date_time - datetime.now(timezone(timedelta(hours=7)))).total_seconds())
         )
     LoggerFactory().add_log("INFO", f"Closest record: {closest_record}", tag="ReportMaking")
     print(f"Closest record: {closest_record}")
@@ -190,6 +333,9 @@ def detect_last_trend(
         print(f"Trend code: {trend_code} (1: downtrend, 2: uptrend)")
         LoggerFactory().add_log("INFO", f"Trend code: {trend_code} (1: downtrend, 2: uptrend)", tag="ReportMaking")
     return filtered , trend_code, closest_record
+
+
+
 def find_peak_last_point(arr: np.ndarray, delta: int = 10) -> int:
     """
     Tìm index của peak đơn giản:
@@ -458,12 +604,13 @@ def filter_peaks_troughs( records: List[WaterRecord],
     #     raw_value = np.array([r.water_level_0 for r in records], dtype='int'),
     #     smooth_value =  np.array([r.water_level_0 for r in records], dtype='int'),
     #     peaks =      absolute_peaks_after_remove_closeer,
-    #     troughs =    absolute_troughts_after_remove_closeer
+    #     troughs =    absolute_troughts_after_remove_closeer,
+    #     times = np.array([r.date_time for r in records])
     # )
     return absolute_peaks_after_remove_closeer, absolute_troughts_after_remove_closeer
 def trend_detected_processes(
     all_records: List[WaterRecord],
-) -> Tuple[List[WaterRecord], List[WaterRecord], str]:
+) -> List[ReportPoint]:
     """
     Xử lý phát hiện xu hướng và đỉnh/đáy từ danh sách bản ghi.
     Trả về danh sách đỉnh, đáy và mã xu hướng.
@@ -485,6 +632,9 @@ def trend_detected_processes(
     LoggerFactory().add_log("INFO", f"Absolute peaks: {[all_records[r].date_time.strftime('%Y-%m-%d %H:%M') for r in absolute_peaks_indices]}", tag="ReportMaking")
     LoggerFactory().add_log("INFO", f"Absolute troughs: {[all_records[r].date_time.strftime('%Y-%m-%d %H:%M') for r in absolute_troughs_indices]}", tag="ReportMaking")
     print(f"Filtered peaks/troughs: {filtered}")
+    
     # 2) Phát hiện xu hướng
-    filtered, trend_code ,closest_record= detect_last_trend(all_records, filtered)
-    return filtered, trend_code, closest_record
+    #filtered, trend_code ,closest_record= detect_last_trend(all_records, filtered)
+    list_report_point = []
+    list_report_point = prepare_points(all_records, filtered)
+    return list_report_point 

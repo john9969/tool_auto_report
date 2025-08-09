@@ -1,10 +1,11 @@
-from data.data_handler import WaterRecord
+from data.data_process import WaterRecord
 from datetime import datetime
 from typing import List, Tuple, Set
 from logger.logger import LoggerFactory
+from data.trend_detected import ReportPoint
 from datetime import timedelta
 import json
-SERIAL_NUMBER = "74194"
+SERIAL_NUMBER = "74165"
 
 import os
 from typing import List, Tuple
@@ -82,71 +83,16 @@ def update_peaks_troughs_json(
 
 
 def make_report(
-    filtered: List[Tuple[WaterRecord,str]],
-    trend_code:  str,
-    closest_record: WaterRecord,
+    list_report_point: List[ReportPoint]
 ) -> str:
     print("Start Making report")
     LoggerFactory().add_log("INFO", f"Start Making report:", tag="ReportMaking")
-    trend_code += f"{closest_record.water_level_0 // 10:04d}"
-    print(f"Trend code: {trend_code} (1: downtrend, 2: uptrend)")
-    # Lọc bỏ các peak/trough cũ hơn 6.5 giờ so với thời điểm hiện tại
-    # Tmin = datetime.now() - timedelta(hours=6, minutes=30)
-    # filtered_new: List[Tuple[WaterRecord, str]] = []
-    # for rec, kind in filtered:
-    #     if rec.date_time < Tmin:
-    #         LoggerFactory().add_log(
-    #             "INFO",
-    #             f"Dropping {kind} at {rec.date_time.strftime('%Y-%m-%d %H:%M')} older than {Tmin.strftime('%Y-%m-%d %H:%M')}",
-    #             tag="ReportMaking"
-    #         )
-    #         print(
-    #             f"Dropping {kind} at {rec.date_time.strftime('%Y-%m-%d %H:%M')} older than {Tmin.strftime('%Y-%m-%d %H:%M')}"
-    #         )
-    #     else:
-    #         filtered_new.append((rec, kind))
-            
-    # 1) Check old reported peaks and troughs
-    if(datetime.now().hour == 1 or datetime.now().hour == 7 or datetime.now().hour == 13 or datetime.now().hour == 19):
-        filtered = update_peaks_troughs_json(filtered)
-    else:
-        # Lọc bỏ các peak/trough cũ hơn 6.5 giờ so với thời điểm hiện tại
-        Tmin = datetime.now() - timedelta(hours=6, minutes=30)
-        filtered_new: List[Tuple[WaterRecord, str]] = []
-        for rec, kind in filtered:
-            if rec.date_time < Tmin:
-                LoggerFactory().add_log(
-                    "INFO",
-                    f"Dropping {kind} at {rec.date_time.strftime('%Y-%m-%d %H:%M')} older than {Tmin.strftime('%Y-%m-%d %H:%M')}",
-                    tag="ReportMaking"
-                )
-                print(
-                    f"Dropping {kind} at {rec.date_time.strftime('%Y-%m-%d %H:%M')} older than {Tmin.strftime('%Y-%m-%d %H:%M')}"
-                )
-            else:
-                filtered_new.append((rec, kind))
-        filtered = filtered_new
-                
-    peaks_and_troughs_str =""
-    for rec in filtered:
-        if(rec[1] == 'peak'):
-            if peaks_and_troughs_str:
-                peaks_and_troughs_str += " "
-            round_time = rec[0].date_time.replace(minute = ((rec[0].date_time.minute // 10) * 10))
-            peaks_and_troughs_str += f"{round_time.strftime('%H%M')} 8{rec[0].water_level_0 // 10:04d}"
-            print(f"add peak at {rec[0].date_time.strftime('%H:%M')} → Water_Level(0) = {rec[0].water_level_0}")
-        else:
-            if peaks_and_troughs_str:
-                peaks_and_troughs_str += " "
-            round_time = rec[0].date_time.replace(hour = rec[0].date_time.hour, minute = ((rec[0].date_time.minute // 10) * 10))
-            peaks_and_troughs_str += f"{round_time.strftime('%H%M')} 9{rec[0].water_level_0 // 10:04d}"
-            print(f"add trough at {rec[0].date_time.strftime('%H:%M')} → Water_Level(0) = {rec[0].water_level_0}")
-    # 2) Create report string
-    print("Creating report string:")
-    ch = f"{datetime.now().day:02d}{datetime.now().hour:02d}"
-    parts = [str(SERIAL_NUMBER), "22", ch]
-    parts.append(str(trend_code))
-    if peaks_and_troughs_str:
-        parts.append(peaks_and_troughs_str)
-    parts += ["44", ch, "30000="]
-    return " ".join(parts)
+    
+    report = SERIAL_NUMBER + " 22 "
+    for report_point in list_report_point:
+        ch = f"{report_point.date_time.day:02d}{report_point.date_time.hour:02d} "
+        ch += f"{report_point.trend}{report_point.water_level//10:04d} "
+        report += ch
+    report += f"44 {datetime.now().day:02d}{datetime.now().hour:02d} 30000="
+    
+    return report

@@ -1,19 +1,17 @@
-from network.fetcher import DataFetcher
-from data.data_handler import DataProcessor
+from data.data_process import parse_water_records_range
 from logger.logger import LoggerFactory
-# from notify.telegram_bot import TelegramNotifier
 from automation.selenium_controller import selenium_controller
 from data.filter import FilterWaterLevel
 from data.trend_detected import *
+from network.fetcher import WaterAPI
 from data.report_making import make_report
 import requests
+from config import API_URL_GET_WATER_LEVEL
+import traceback
 import time
 from datetime import datetime, timedelta
 
-#from startup.auto_start import AutoStartManager
 logger = LoggerFactory()
-fetcher = DataFetcher()
-processor = DataProcessor()
 filterWaterLevel = FilterWaterLevel()
 def run_every_hour(task_func):
 
@@ -35,22 +33,26 @@ def run_every_hour(task_func):
 def main():
     try:
         logger.add_log("INFO", "**********************START MAIN APP**********************", tag="Main")
-        data = fetcher.fetch()
+        api = WaterAPI(API_URL_GET_WATER_LEVEL)
+        data = api.fetch()
         if not data:
             logger.add_log("WARNING", "No data fetched", tag="Main")
             return
         # data = fetcher.fetch_test()  # Uncomment for testing
-        result = processor.process(data)
-        if not result:
+        all_records = parse_water_records_range(data)
+        
+        if not all_records:
             logger.add_log("WARNING", "No records processed", tag="Main")
             print("No records processed")
             return
-        result = filterWaterLevel.detect_outlier_by_median(result)
-        for i in result:
+        for water in all_records:
+            print(f"date: {water.date_time} water:{water.water_level_0}")
+        all_records = filterWaterLevel.detect_outlier_by_median(all_records)
+        for i in all_records:
             logger.add_log("INFO", f"Record: {i}", tag="Main")
             print(f"Record: {i}")
-        filtered,trend_code, closest_record = trend_detected_processes(result)
-        report = make_report( filtered,trend_code, closest_record)
+        list_report_point = trend_detected_processes(all_records)
+        report = make_report(list_report_point)
         print(f"Report: {report}")
         logger.add_log("INFO", f"report:{report}", tag="Main")
         if(datetime.now().hour == 1 or datetime.now().hour == 7 or datetime.now().hour == 13 or datetime.now().hour == 19):
@@ -62,18 +64,17 @@ def main():
         try:
             response = requests.post("https://donuoctrieuduong.xyz/water_level_api/test/update_water.php", json=payload)
             response.raise_for_status()  # ném exception nếu status != 2xx
-            processor.clear()  # Xoá bộ đệm sau khi xử lý xong
             # Nếu API trả về JSON, parse và trả về
+            
             return response.json()
         except requests.RequestException as e:
+            traceback.print_exc()
             print(f"Request failed: {e}")
-            processor.clear()  # Xoá bộ đệm sau khi xử lý xong
             return None
         
     except Exception as e:
         logger.add_log("BUG", str(e), tag="Main")
-        processor.clear()
-
+        traceback.print_exc()
 if __name__ == "__main__":
  #   startup.add_to_startup()
     #run_every_hour(main)
