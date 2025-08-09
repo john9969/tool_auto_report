@@ -1,12 +1,12 @@
-from data.data_process import parse_water_records_range
+from data.data_process import parse_water_records_range,parse_rain_record
 from logger.logger import LoggerFactory
 from automation.selenium_controller import selenium_controller
 from data.filter import FilterWaterLevel
 from data.trend_detected import *
-from network.fetcher import WaterAPI
+from network.fetcher import API
 from data.report_making import make_report
 import requests
-from config import API_URL_GET_WATER_LEVEL
+from config import API_URL_GET_WATER_LEVEL,API_URL_GET_RAIN_LEVEL
 import traceback
 import time
 from datetime import datetime, timedelta
@@ -33,14 +33,17 @@ def run_every_hour(task_func):
 def main():
     try:
         logger.add_log("INFO", "**********************START MAIN APP**********************", tag="Main")
-        api = WaterAPI(API_URL_GET_WATER_LEVEL)
-        data = api.fetch()
-        if not data:
+        api_get_water_level = API(API_URL_GET_WATER_LEVEL)
+        api_get_rain_level = API(API_URL_GET_RAIN_LEVEL)
+        water_html_data = api_get_water_level.fetch()
+        rain_json_data = api_get_rain_level.fetch()
+        
+        if not water_html_data:
             logger.add_log("WARNING", "No data fetched", tag="Main")
             return
         # data = fetcher.fetch_test()  # Uncomment for testing
-        all_records = parse_water_records_range(data)
-        
+        all_records = parse_water_records_range(water_html_data)
+        rain_record = parse_rain_record(rain_json_data)
         if not all_records:
             logger.add_log("WARNING", "No records processed", tag="Main")
             print("No records processed")
@@ -52,15 +55,15 @@ def main():
             logger.add_log("INFO", f"Record: {i}", tag="Main")
             print(f"Record: {i}")
         list_report_point = trend_detected_processes(all_records)
-        report = make_report(list_report_point)
+        report = make_report(list_report_point,rain_record)
         print(f"Report: {report}")
         logger.add_log("INFO", f"report:{report}", tag="Main")
         if(datetime.now().hour == 1 or datetime.now().hour == 7 or datetime.now().hour == 13 or datetime.now().hour == 19):
             report
         else:
-            report = "checking"
+            report = "Trạm Hà Nội đang hoạt động ............"
         payload = {'text': report}
-        selenium_controller(report)
+        #selenium_controller(report)
         try:
             response = requests.post("https://donuoctrieuduong.xyz/water_level_api/test/update_water.php", json=payload)
             response.raise_for_status()  # ném exception nếu status != 2xx

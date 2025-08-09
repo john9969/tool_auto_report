@@ -3,7 +3,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
-class WaterAPI:
+class API:
     def __init__(self, api_url: str, headers: dict | None = None, timeout: float = 15.0):
         self.api_url = api_url
         self.headers = {

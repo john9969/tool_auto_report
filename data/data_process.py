@@ -1,5 +1,6 @@
 from __future__ import annotations
 import re
+import json
 from dataclasses import dataclass
 from typing import Optional, List
 from bs4 import BeautifulSoup
@@ -106,3 +107,22 @@ def parse_water_records_range(html: str) -> List[WaterRecord]:
             unique_records.append(rec)
             
     return unique_records
+
+def parse_rain_record(json_data:str) -> int:
+    # Parse dữ liệu từ JSON nếu là string
+    if isinstance(json_data, str):
+        data = json.loads(json_data)
+    else:
+        data = json_data
+
+    # Lấy danh sách trong "Data"
+    records = data.get("Data", [])
+
+    if not records:
+        return None
+
+    # Sắp xếp theo DateCreate (mới nhất trước)
+    records.sort(key=lambda x: datetime.fromisoformat(x["DateCreate"].replace("Z", "+00:00")), reverse=True)
+    bac_value = records[0].get("BAC", 0)
+    # Lấy BAC của bản ghi đầu tiên (mới nhất)
+    return int(float(bac_value) * 1000)

@@ -83,7 +83,8 @@ def update_peaks_troughs_json(
 
 
 def make_report(
-    list_report_point: List[ReportPoint]
+    list_report_point: List[ReportPoint],
+    rain_level: int
 ) -> str:
     print("Start Making report")
     LoggerFactory().add_log("INFO", f"Start Making report:", tag="ReportMaking")
@@ -93,6 +94,7 @@ def make_report(
         ch = f"{report_point.date_time.day:02d}{report_point.date_time.hour:02d} "
         ch += f"{report_point.trend}{report_point.water_level//10:04d} "
         report += ch
-    report += f"44 {datetime.now().day:02d}{datetime.now().hour:02d} 30000="
+    report += f"44 {datetime.now().day:02d}{datetime.now().hour:02d} 3"
+    report += f"{rain_level:04d}="
     
     return report
