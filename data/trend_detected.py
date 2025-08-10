@@ -213,7 +213,7 @@ def _sorted_filtered_indices(filtered: List[FilteredItem], dt_index: dict, all_r
     out.sort(key=lambda x: x[0])
     return out
 
-def _find_prev_label(sorted_filtered: List[Tuple[int, str]], idx: int) -> Optional[str]:
+def _find_prev_label(sorted_filtered: List[Tuple[int, str]], idx: int) -> int:
     """Tìm nhãn của điểm (peak/trough) gần nhất đứng TRƯỚC idx."""
     # Vì sorted tăng dần, ta đi từ cuối về đầu đến khi gặp idx' < idx
     for i in range(len(sorted_filtered) - 1, -1, -1):
@@ -241,13 +241,83 @@ def _pick_latest(all_records: List[WaterRecord]) -> Optional[int]:
         return None
     return max(range(len(all_records)), key=lambda i: _naive(all_records[i].date_time))
 
-def _trend_from_prev_label(prev_label: Optional[str]) -> int:
-    """Quy đổi nhãn trước đó sang trend."""
+def _trend_from_prev_label(
+    all_records: List[WaterRecord],
+    refer_point: int,
+    prev_label: Optional[str],
+    lower_thresh: int = 3,          # delta mực nước
+    min_duration_hours: int = 4,    # thời gian tối thiểu 4h
+) -> int:
+    """
+    Tính trend:
+      1. Xác định dải 'nước đứng' từ last_point[-8h] -> last_point.
+         - Nước đứng: abs(level[start] - level[stop]) <= lower_thresh
+           và time(stop) - time(start) >= min_duration_hours
+         - Dừng khi tìm được đoạn [start..stop_end] thỏa mãn.
+      2. Nếu refer_point nằm trong dải đứng -> trend = 0
+      3. Ngược lại: peak -> 1 (downtrend), trough -> 2 (uptrend), mặc định 2
+    """
+    n = len(all_records)
+    if n == 0 or not (0 <= refer_point < n):
+        return 2
+
+    last_point = all_records[-1]
+    last_time = last_point.date_time
+    min_dur = timedelta(hours=min_duration_hours)
+
+    # Tính khoảng start hợp lệ: từ last_time - 8h đến last_time - 4h
+    t_lo = last_time - timedelta(hours=8)
+    t_hi = last_time - timedelta(hours=4)
+
+    candidate_starts = [
+        i for i, r in enumerate(all_records)
+        if t_lo <= r.date_time <= t_hi
+    ]
+
+    standing_start = None
+    standing_end = None
+
+    for start in candidate_starts:
+        lvl_start = all_records[start].water_level_0
+        if lvl_start is None:
+            continue
+
+        found_cross = False
+        for stop in range(start + 1, n):
+            lvl_stop = all_records[stop].water_level_0
+            if lvl_stop is None:
+                continue
+
+            dlevel = abs(lvl_stop - lvl_start)
+            dt = all_records[stop].date_time - all_records[start].date_time
+
+            if dlevel >= lower_thresh:
+                found_cross = True
+                if dt > min_dur:
+                    standing_start, standing_end = start, stop - 1
+                break  # Dừng quét stop, xét start kế tiếp
+
+        if not found_cross:
+            # Không vượt ngưỡng đến cuối  kiểm tra cả đoạn [start..last]
+            dlevel_end = abs(all_records[-1].water_level_0 - lvl_start)
+            dt_end = all_records[-1].date_time - all_records[start].date_time
+            if dlevel_end <= lower_thresh and dt_end >= min_dur:
+                standing_start, standing_end = start, n - 1
+
+        if standing_start is not None and standing_end is not None:
+            break  # đã tìm được dải đứng
+            
+    # Kiểm tra refer_point có nằm trong dải đứng không
+    if standing_start is not None and standing_end is not None:
+        if standing_start <= refer_point <= standing_end:
+            return 0
+
+    # Nếu không nằm trong nước đứng → trend theo prev_label
     if prev_label == "peak":
-        return 1  # downtrend
+        return 1
     elif prev_label == "trough":
-        return 2  # uptrend
-    return 2      # mặc định uptrend nếu không tìm thấy (bạn có thể đổi sang 0 nếu muốn)
+        return 2
+    return 2  # mặc định uptrend
 
 def prepare_points(
     all_records: List[WaterRecord],
@@ -278,7 +348,7 @@ def prepare_points(
         prev_label = _find_prev_label(sorted_filtered, idx1)
         points.append(ReportPoint(
             water_level=rec1.water_level_0,
-            trend=_trend_from_prev_label(prev_label),
+            trend=_trend_from_prev_label(all_records, idx1, prev_label),
             date_time=_naive(rec1.date_time)
         ))
 
@@ -289,7 +359,7 @@ def prepare_points(
         prev_label = _find_prev_label(sorted_filtered, idx2)
         points.append(ReportPoint(
             water_level=rec2.water_level_0,
-            trend=_trend_from_prev_label(prev_label),
+            trend=_trend_from_prev_label(all_records, idx2, prev_label),
             date_time=_naive(rec2.date_time)
         ))
 
@@ -300,7 +370,7 @@ def prepare_points(
         prev_label = _find_prev_label(sorted_filtered, idx3)
         points.append(ReportPoint(
             water_level=rec3.water_level_0,
-            trend=_trend_from_prev_label(prev_label),
+            trend=_trend_from_prev_label(all_records, idx3, prev_label),
             date_time=_naive(rec3.date_time)
         ))
 
@@ -600,13 +670,13 @@ def filter_peaks_troughs( records: List[WaterRecord],
 ) -> Tuple[np.ndarray, np.ndarray]:
     absolute_peaks_filtered,absolute_troughs_filtered = remove_duplicate_peaks_troughts(records, absolute_peaks, absolute_troughs)
     absolute_peaks_after_remove_closeer, absolute_troughts_after_remove_closeer = remove_closed_peaks_troughts(records, absolute_peaks_filtered.tolist(),absolute_troughs_filtered.tolist(),height= 50,width= 40)
-    # write_chart(
-    #     raw_value = np.array([r.water_level_0 for r in records], dtype='int'),
-    #     smooth_value =  np.array([r.water_level_0 for r in records], dtype='int'),
-    #     peaks =      absolute_peaks_after_remove_closeer,
-    #     troughs =    absolute_troughts_after_remove_closeer,
-    #     times = np.array([r.date_time for r in records])
-    # )
+    write_chart(
+        raw_value = np.array([r.water_level_0 for r in records], dtype='int'),
+        smooth_value =  np.array([r.water_level_0 for r in records], dtype='int'),
+        peaks =      absolute_peaks_after_remove_closeer,
+        troughs =    absolute_troughts_after_remove_closeer,
+        times = np.array([r.date_time for r in records])
+    )
     return absolute_peaks_after_remove_closeer, absolute_troughts_after_remove_closeer
 def trend_detected_processes(
     all_records: List[WaterRecord],
