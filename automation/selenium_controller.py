@@ -9,8 +9,8 @@ from urllib.parse import urljoin
 import datetime
 LINK = 'http://madien2.kttvdb.vn/content/users/login.asp?ret_page=../../content/code/'
 LINK_REPORT = "http://madien2.kttvdb.vn/content/code/"
-USER = 'tvtrieuduong'
-PASS = '91376'
+USER = 'tvhanoi'
+PASS = '91372'
 ZALO_CHAT_NAME ="report_tvtrieuduong"
 
 def login(user: str, password: str, link: str)-> tuple[webdriver.Chrome | None, bool]:

@@ -63,7 +63,7 @@ def main():
         else:
             report = "Trạm Hà Nội đang hoạt động ............"
         payload = {'text': report}
-        #selenium_controller(report)
+        selenium_controller(report)
         try:
             response = requests.post("https://donuoctrieuduong.xyz/water_level_api/test/update_water.php", json=payload)
             response.raise_for_status()  # ném exception nếu status != 2xx
