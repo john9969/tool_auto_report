@@ -61,8 +61,8 @@ def main():
         if(datetime.now().hour == 1 or datetime.now().hour == 7 or datetime.now().hour == 13 or datetime.now().hour == 19):
             report
         else:
-            report = "Trạm Hà Nội đang hoạt động ............"
-        payload = {'text': report}
+            report = "checking"
+        payload = {'text': "Trạm hà nội " + report}
         selenium_controller(report)
         try:
             response = requests.post("https://donuoctrieuduong.xyz/water_level_api/test/update_water.php", json=payload)
