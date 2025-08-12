@@ -11,6 +11,7 @@ LINK = 'http://madien2.kttvdb.vn/content/users/login.asp?ret_page=../../content/
 LINK_REPORT = "http://madien2.kttvdb.vn/content/code/"
 USER = 'tvhanoi'
 PASS = '91372'
+IDD = '100'
 ZALO_CHAT_NAME ="report_tvtrieuduong"
 
 def login(user: str, password: str, link: str)-> tuple[webdriver.Chrome | None, bool]:
@@ -80,7 +81,7 @@ def login(user: str, password: str, link: str)-> tuple[webdriver.Chrome | None, 
 def navigate_to_add_matv(driver)-> tuple[webdriver.Chrome | None, bool]:
     try:
         today = datetime.date.today().strftime('%Y/%-m/%-d')
-        path = f"add_maTV.asp?page_type=0&idd=104&ngay={today}&ngayxem={today}"
+        path = f"add_maTV.asp?page_type=0&idd={IDD}&ngay={today}&ngayxem={today}"
         print(f"path:{path}")
         full_url = urljoin(LINK_REPORT, path)
         print(f"[Navigate] Going to {full_url}")
