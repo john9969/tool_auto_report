@@ -123,6 +123,8 @@ def parse_rain_record(json_data:str) -> int:
 
     # Sắp xếp theo DateCreate (mới nhất trước)
     records.sort(key=lambda x: datetime.fromisoformat(x["DateCreate"].replace("Z", "+00:00")), reverse=True)
-    bac_value = records[0].get("BAC", 0)
+    bac_value = float(records[0].get("BAC", 0))
     # Lấy BAC của bản ghi đầu tiên (mới nhất)
-    return round(float(bac_value))
+    if 0.1 <= bac_value <= 0.9:
+        return 9999
+    return round(bac_value)
