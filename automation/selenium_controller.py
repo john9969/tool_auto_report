@@ -149,43 +149,43 @@ def fill_content_and_submit(driver, content: str)-> tuple[webdriver.Chrome | Non
 
 def send_zalo_message(message: str):
     print("[Zalo] Navigating to chat.zalo.me")
-    options = Options()
-    options.binary_location = '/usr/bin/chromium-browser'
-    #options.add_argument('--headless')
-    options.add_argument('--user-data-dir=/home/tuan/.config/chromium')
-    options.add_argument('--profile-directory=Default')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    service = Service('/usr/bin/chromedriver')  # updated path
+    # options = Options()
+    # options.binary_location = '/usr/bin/chromium-browser'
+    # #options.add_argument('--headless')
+    # options.add_argument('--user-data-dir=/home/tuan/.config/chromium')
+    # options.add_argument('--profile-directory=Default')
+    # options.add_argument('--no-sandbox')
+    # options.add_argument('--disable-dev-shm-usage')
+    # service = Service('/usr/bin/chromedriver')  # updated path
 
-    print("[Login] Initializing Chromium driver (headless)")
-    driver = webdriver.Chrome(service=service, options=options)
-    driver.get('https://chat.zalo.me')
-    time.sleep(20)  # wait for chat list
+    # print("[Login] Initializing Chromium driver (headless)")
+    # driver = webdriver.Chrome(service=service, options=options)
+    # driver.get('https://chat.zalo.me')
+    # time.sleep(20)  # wait for chat list
 
-    print(f"[Zalo] Locating chat item: {ZALO_CHAT_NAME}")
-    items = driver.find_elements(By.CLASS_NAME, 'truncate')
-    for item in items:
-        if item.text.strip() == ZALO_CHAT_NAME:
-            item.click()
-            print("[Zalo] Chat selected")
-            break
-    else:
-        print("[Zalo] Chat not found")
-        return
+    # print(f"[Zalo] Locating chat item: {ZALO_CHAT_NAME}")
+    # items = driver.find_elements(By.CLASS_NAME, 'truncate')
+    # for item in items:
+    #     if item.text.strip() == ZALO_CHAT_NAME:
+    #         item.click()
+    #         print("[Zalo] Chat selected")
+    #         break
+    # else:
+    #     print("[Zalo] Chat not found")
+    #     return
 
-    time.sleep(3)
-    print("[Zalo] Locating message input container")
-    input_container = driver.find_element(By.ID, 'input_line_0')
-    input_container.click()
-    input_container.send_keys(message)
-    time.sleep(5)
-    send_btn = driver.find_element(By.CSS_SELECTOR, '[class*="send-msg-btn"]')
-    send_btn.click()
-    print("[Zalo] Send button clicked")
-    time.sleep(5)
-    driver.quit()
-    print("[Zalo] Message sent")
+    # time.sleep(3)
+    # print("[Zalo] Locating message input container")
+    # input_container = driver.find_element(By.ID, 'input_line_0')
+    # input_container.click()
+    # input_container.send_keys(message)
+    # time.sleep(5)
+    # send_btn = driver.find_element(By.CSS_SELECTOR, '[class*="send-msg-btn"]')
+    # send_btn.click()
+    # print("[Zalo] Send 
+    # time.sleep(5)
+    # driver.quit()
+    # print("[Zalo] Message sent")
     
 def selenium_controller(ma_dien_bao:str):
     stt = False
