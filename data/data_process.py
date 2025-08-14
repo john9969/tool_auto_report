@@ -119,7 +119,7 @@ def parse_rain_record(json_data:str) -> int:
     records = data.get("Data", [])
 
     if not records:
-        return None
+        return 0
 
     # Sắp xếp theo DateCreate (mới nhất trước)
     records.sort(key=lambda x: datetime.fromisoformat(x["DateCreate"].replace("Z", "+00:00")), reverse=True)

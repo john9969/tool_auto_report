@@ -81,7 +81,7 @@ def detect_absolute_peaks_troughs(
 
     # 2) Lọc dữ liệu, loại bỏ gai
     
-    smoothed_value = savgol_filter(values_np, window_length=5, polyorder=1)
+    smoothed_value = savgol_filter(values_np, window_length=7, polyorder=1)
     
     # 3) Tìm relative peaks/troughs
     peaks   = find_peaks_custom(smoothed_value,
