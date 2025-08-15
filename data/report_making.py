@@ -90,10 +90,14 @@ def make_report(
     LoggerFactory().add_log("INFO", f"Start Making report:", tag="ReportMaking")
     
     report = SERIAL_NUMBER + " 22 "
+    delta_hour = 4
+    current_time = datetime.now()
     for report_point in list_report_point:
-        ch = f"{report_point.date_time.day:02d}{report_point.date_time.hour:02d} "
+        time_report = current_time - timedelta(hours= delta_hour)
+        ch = f"{time_report.day:02d}{time_report.hour:02d} "
         ch += f"{report_point.trend}{report_point.water_level//10:04d} "
         report += ch
+        delta_hour -= 2
     report += f"44 {datetime.now().day:02d}{datetime.now().hour:02d} 3"
     report += f"{rain_level:04d}="
     

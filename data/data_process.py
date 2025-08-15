@@ -2,10 +2,12 @@ from __future__ import annotations
 import re
 import json
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
-Hour_Delta = 72
+from zoneinfo import ZoneInfo  # Python 3.9+
+
+Hour_Delta = 100
 @dataclass
 class WaterRecord:
     date_time: datetime
@@ -116,15 +118,50 @@ def parse_rain_record(json_data:str) -> int:
         data = json_data
 
     # Lấy danh sách trong "Data"
-    records = data.get("Data", [])
+    records: List[Dict[str, Any]] = data.get("Data", [])
 
     if not records:
         return 0
+    def _parse_iso_utc(s: str) -> datetime:
+    # Handle trailing 'Z' and make it timezone-aware UTC
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    BKK = ZoneInfo("Asia/Bangkok")
 
-    # Sắp xếp theo DateCreate (mới nhất trước)
-    records.sort(key=lambda x: datetime.fromisoformat(x["DateCreate"].replace("Z", "+00:00")), reverse=True)
-    bac_value = float(records[0].get("BAC", 0))
+    enriched: List[Dict[str, Any]] = []
+    for r in records:
+        dc = r.get("DateCreate")
+        if not dc:
+            continue
+        try:
+            dt_utc = _parse_iso_utc(dc)
+            dt_local = dt_utc.astimezone(BKK)  # convert to +7
+            r["_dt_utc"] = dt_utc
+            r["_dt_local"] = dt_local
+            enriched.append(r)
+        except Exception:
+            # Bad timestamp format; skip this record
+            continue
+    enriched.sort(key=lambda x: x["_dt_utc"])
+    # 3) Get the latest record and the record at (latest - 7h)
+    latest: Optional[Dict[str, Any]] = enriched[-1] if enriched else None
+
+    def find_at_or_before(target_dt_local: datetime) -> Optional[Dict[str, Any]]:
+        """Find the newest record whose local time <= target_dt_local."""
+        candidates = [r for r in enriched if r["_dt_local"] <= target_dt_local]
+        return candidates[-1] if candidates else None
+
+    rec_minus_7h: Optional[Dict[str, Any]] = None
+    if latest:
+        target_local = latest["_dt_local"] - timedelta(hours=7)
+        rec_minus_7h = find_at_or_before(target_local)
+        if rec_minus_7h:
+            rain_level = latest.get("BAC", 0) - rec_minus_7h.get("BAC", 0)
+        else:
+            rain_level = latest.get("BAC", 0)
+    else:
+        return 0         
     # Lấy BAC của bản ghi đầu tiên (mới nhất)
-    if 0.1 <= bac_value <= 0.9:
+    print(f"Rain level: {rain_level}")
+    if 0.1 <= rain_level <= 0.4:
         return 9999
-    return round(bac_value)
+    return round(rain_level)

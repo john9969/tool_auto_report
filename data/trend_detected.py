@@ -42,37 +42,63 @@ def find_peaks_custom(signal: np.ndarray, windows: int, delta: int) -> np.ndarra
             print(f"Peak detected at index {i} with value {signal[i]}")
              
     return np.array(peaks, dtype=int)
-def write_chart(raw_value:np.ndarray ,
-                smooth_value:np.ndarray,
-                peaks:np.ndarray,
-                troughs:np.ndarray,
-                times: np.ndarray
-                ) -> None:
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(times, raw_value, label="Raw", marker='o')
-    ax.plot(times, smooth_value, label="Smooth", linestyle='--')
+from pathlib import Path
+from datetime import datetime
+import numpy as np
+import matplotlib.pyplot as plt
 
-    ax.plot([times[i] for i in peaks], [raw_value[i] for i in peaks],
-            linestyle='None', marker='^', markersize=10, markeredgewidth=0.8, zorder=3, label='Peaks')
+def write_chart(
+    raw_value: np.ndarray,
+    smooth_value: np.ndarray,
+    peaks,
+    troughs,
+    times: np.ndarray,
+    out_dir: str = "images"
+) -> str:
+    """
+    Plot raw/smoothed series with peak/trough markers and save as images/hh-dd-mm-yy.png.
+    Returns the saved file path.
+    """
 
-    ax.plot([times[i] for i in troughs], [raw_value[i] for i in troughs],
-            linestyle='None', marker='v', markersize=10, markeredgewidth=0.8, zorder=3, label='Troughs')
+    # --- Prepare data
+    raw = np.asarray(raw_value)
+    sm  = np.asarray(smooth_value)
+    t   = np.asarray(times)
 
-    # Format trục X để hiển thị ngày + giờ
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m %H:%M'))
-    fig.autofmt_xdate(rotation=45)
+    # Defensive: ensure indices are int arrays (may be lists)
+    peaks_idx   = np.asarray(peaks, dtype=int)   if len(peaks)   else np.array([], dtype=int)
+    troughs_idx = np.asarray(troughs, dtype=int) if len(troughs) else np.array([], dtype=int)
 
-    ax.set_xlabel("Thời gian")
-    ax.set_ylabel("Mực nước")
+    # --- Plot
+    fig = plt.figure(figsize=(12, 4))
+    ax = fig.gca()
+    ax.plot(t, raw, label="raw")
+    ax.plot(t, sm,  label="smooth", alpha=0.9)
+
+    if peaks_idx.size:
+        ax.scatter(t[peaks_idx], sm[peaks_idx], marker="^", s=40, label="peaks")
+    if troughs_idx.size:
+        ax.scatter(t[troughs_idx], sm[troughs_idx], marker="v", s=40, label="troughs")
+
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Value")
     ax.legend()
-    ax.grid(True)
+    fig.autofmt_xdate()
+    fig.tight_layout()
 
-    plt.show()
-    
+    # --- Save file to images/hh-dd-mm-yy.png
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    filename = datetime.now().strftime("%H-%d-%m-%y") + ".png"
+    filepath = Path(out_dir) .joinpath(filename)
+    fig.savefig(filepath, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+    return str(filepath)
+
 def detect_absolute_peaks_troughs(
     records: List[WaterRecord],
     window_sg:  int     = 23,
-    delta_sg:   int = 3
+    delta_sg:   int = 10
 ) -> Tuple[np.ndarray, np.ndarray]:
     
     # 1) Chuẩn bị times/values
@@ -81,7 +107,7 @@ def detect_absolute_peaks_troughs(
 
     # 2) Lọc dữ liệu, loại bỏ gai
     
-    smoothed_value = savgol_filter(values_np, window_length=7, polyorder=1)
+    smoothed_value = savgol_filter(values_np, window_length=9, polyorder=1)
     
     # 3) Tìm relative peaks/troughs
     peaks   = find_peaks_custom(smoothed_value,
@@ -670,13 +696,13 @@ def filter_peaks_troughs( records: List[WaterRecord],
 ) -> Tuple[np.ndarray, np.ndarray]:
     absolute_peaks_filtered,absolute_troughs_filtered = remove_duplicate_peaks_troughts(records, absolute_peaks, absolute_troughs)
     absolute_peaks_after_remove_closeer, absolute_troughts_after_remove_closeer = remove_closed_peaks_troughts(records, absolute_peaks_filtered.tolist(),absolute_troughs_filtered.tolist(),height= 50,width= 40)
-    # write_chart(
-    #     raw_value = np.array([r.water_level_0 for r in records], dtype='int'),
-    #     smooth_value =  np.array([r.water_level_0 for r in records], dtype='int'),
-    #     peaks =      absolute_peaks_after_remove_closeer,
-    #     troughs =    absolute_troughts_after_remove_closeer,
-    #     times = np.array([r.date_time for r in records])
-    # )
+    write_chart(
+        raw_value = np.array([r.water_level_0 for r in records], dtype='int'),
+        smooth_value =  np.array([r.water_level_0 for r in records], dtype='int'),
+        peaks =      absolute_peaks_after_remove_closeer,
+        troughs =    absolute_troughts_after_remove_closeer,
+        times = np.array([r.date_time for r in records])
+    )
     return absolute_peaks_after_remove_closeer, absolute_troughts_after_remove_closeer
 def trend_detected_processes(
     all_records: List[WaterRecord],
