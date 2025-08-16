@@ -270,9 +270,10 @@ def _pick_latest(all_records: List[WaterRecord]) -> Optional[int]:
 def _trend_from_prev_label(
     all_records: List[WaterRecord],
     refer_point: int,
+    water_reference:int,            #16/08/2025: Thêm sửa lại cách tính trend 
     prev_label: Optional[str],
-    lower_thresh: int = 3,          # delta mực nước
-    min_duration_hours: int = 4,    # thời gian tối thiểu 4h
+    lower_thresh: int = 2,          # delta mực nước
+    min_duration_hours: int = 4     # thời gian tối thiểu 4h
 ) -> int:
     """
     Tính trend:
@@ -339,11 +340,16 @@ def _trend_from_prev_label(
             return 0
 
     # Nếu không nằm trong nước đứng → trend theo prev_label
-    if prev_label == "peak":
+    if all_records[refer_point].water_level_0 < water_reference:
         return 1
-    elif prev_label == "trough":
+    elif all_records[refer_point].water_level_0 > water_reference:
         return 2
-    return 2  # mặc định uptrend
+    else:
+        if prev_label == "peak":
+            return 1
+        elif prev_label == "trough":
+            return 2
+        return 2  # mặc định uptrend
 
 def prepare_points(
     all_records: List[WaterRecord],
@@ -366,26 +372,29 @@ def prepare_points(
     sorted_filtered = _sorted_filtered_indices(filtered, dt_index, all_records)
 
     points: List[ReportPoint] = []
-
+    # 16/08/2025: Sửa lại cách tính lên xuống dựa vào điểm trước đó và so sánh mực nước
+    idx_reference = _pick_first_in_window(all_records, now - timedelta(hours=6, minutes=15), now)
+    if idx_reference is not None:
+        water_reference = all_records[idx_reference].water_level_0
     # Điểm 1: cửa sổ 4 giờ
-    idx1 = _pick_first_in_window(all_records, now - timedelta(hours=4), now)
+    idx1 = _pick_first_in_window(all_records, now - timedelta(hours=4, minutes=15), now)
     if idx1 is not None:
         rec1 = all_records[idx1]
         prev_label = _find_prev_label(sorted_filtered, idx1)
         points.append(ReportPoint(
             water_level=rec1.water_level_0,
-            trend=_trend_from_prev_label(all_records, idx1, prev_label),
+            trend=_trend_from_prev_label(all_records, idx1, water_reference, prev_label),
             date_time=_naive(rec1.date_time)
         ))
 
     # Điểm 2: cửa sổ 2 giờ
-    idx2 = _pick_first_in_window(all_records, now - timedelta(hours=2), now)
+    idx2 = _pick_first_in_window(all_records, now - timedelta(hours=2, minutes=15), now)
     if idx2 is not None:
         rec2 = all_records[idx2]
         prev_label = _find_prev_label(sorted_filtered, idx2)
         points.append(ReportPoint(
             water_level=rec2.water_level_0,
-            trend=_trend_from_prev_label(all_records, idx2, prev_label),
+            trend=_trend_from_prev_label(all_records, idx2, all_records[idx1].water_level_0, prev_label),
             date_time=_naive(rec2.date_time)
         ))
 
@@ -396,10 +405,13 @@ def prepare_points(
         prev_label = _find_prev_label(sorted_filtered, idx3)
         points.append(ReportPoint(
             water_level=rec3.water_level_0,
-            trend=_trend_from_prev_label(all_records, idx3, prev_label),
+            trend=_trend_from_prev_label(all_records, idx3,  all_records[idx2].water_level_0, prev_label),
             date_time=_naive(rec3.date_time)
         ))
+    for point in points:
+        print(f"water: {point.water_level}, trend: {point.trend}, hour: {point.date_time.hour}:{point.date_time.minute}")
 
+    # 16/08/2025: Hết thay đổi  
     return points
 
 
@@ -429,24 +441,6 @@ def detect_last_trend(
         print(f"Trend code: {trend_code} (1: downtrend, 2: uptrend)")
         LoggerFactory().add_log("INFO", f"Trend code: {trend_code} (1: downtrend, 2: uptrend)", tag="ReportMaking")
     return filtered , trend_code, closest_record
-
-
-
-def find_peak_last_point(arr: np.ndarray, delta: int = 10) -> int:
-    """
-    Tìm index của peak đơn giản:
-      - Lấy giá trị max và vị trí i = arr.argmax()
-      - i không nằm trong 3 phần tử đầu hoặc 3 phần tử cuối
-      - arr[i] - arr[-1] > delta
-    Trả về i nếu thỏa, ngược lại trả về -1.
-    """
-    if arr.size < 7:
-        return -1
-
-    i = int(np.argmax(arr))
-    if 2 < i < arr.size - 3 and (arr[i] - arr[-1]) > delta:
-        return i
-    return -1
 
 
 def check_last_point(
