@@ -152,9 +152,12 @@ def parse_rain_record(json_data:str) -> int:
 
     rec_minus_7h: Optional[Dict[str, Any]] = None
     if latest:
-        target_local = latest["_dt_local"] - timedelta(hours=7)
+        target_local = latest["_dt_local"] - timedelta(hours=6) #17/08/2025: Thêm sửa báo sai lượng mưa
+        print(f"Target_local: {target_local}")
         rec_minus_7h = find_at_or_before(target_local)
         if rec_minus_7h:
+            print(f"Rain -7h: {rec_minus_7h.get('BAC', 0)}")
+            # print(f"Rain lastest: {latest.get('BAC', 0)}")
             rain_level = latest.get("BAC", 0) - rec_minus_7h.get("BAC", 0)
         else:
             rain_level = latest.get("BAC", 0)
