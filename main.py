@@ -61,8 +61,7 @@ def main():
         report = make_report(list_report_point,rain_record)
         print(f"Report: {report}")
         logger.add_log("INFO", f"report:{report}", tag="Main")
-        current_hour = datetime.now() + timedelta(minutes=DELTA_MINUTE_EARLY)
-        print(f"current: {current_hour}")
+        current_hour = (datetime.now() + timedelta(minutes=DELTA_MINUTE_EARLY)).hour
         if(current_hour == 1 or current_hour  == 7 or current_hour == 13 or current_hour == 19):
             report
         else:
