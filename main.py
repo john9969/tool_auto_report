@@ -18,7 +18,7 @@ def run_every_hour(task_func):
     while True:
         now = datetime.now()
         # Tính thời điểm đầu giờ kế tiếp
-        next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        next_hour = (now + timedelta(hours=1)).replace(minute=2, second=0, microsecond=0) #18/08/2025: sửa bắt đầu đo phút thứ 2 để lấy điểm giờ tròn đó
         wait_seconds = (next_hour - now).total_seconds()
         print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] waiting time {wait_seconds:.0f}s for next task...")
         time.sleep(wait_seconds)

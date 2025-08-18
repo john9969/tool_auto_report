@@ -371,11 +371,11 @@ def prepare_points(
 
     points: List[ReportPoint] = []
     # 16/08/2025: Sửa lại cách tính lên xuống dựa vào điểm trước đó và so sánh mực nước
-    idx_reference = _pick_first_in_window(all_records, now - timedelta(hours=6, minutes=15), now)
+    idx_reference = _pick_first_in_window(all_records, now - timedelta(hours=6, minutes=6), now)    #18/08/2025: sửa lấy phút thứ 50 -> lấy giờ tròn
     if idx_reference is not None:
         water_reference = all_records[idx_reference].water_level_0
     # Điểm 1: cửa sổ 4 giờ
-    idx1 = _pick_first_in_window(all_records, now - timedelta(hours=4, minutes=15), now)
+    idx1 = _pick_first_in_window(all_records, now - timedelta(hours=4, minutes=6), now)             #18/08/2025: sửa lấy phút thứ 50 -> lấy giờ tròn
     if idx1 is not None:
         rec1 = all_records[idx1]
         prev_label = _find_prev_label(sorted_filtered, idx1)
@@ -386,7 +386,7 @@ def prepare_points(
         ))
 
     # Điểm 2: cửa sổ 2 giờ
-    idx2 = _pick_first_in_window(all_records, now - timedelta(hours=2, minutes=15), now)
+    idx2 = _pick_first_in_window(all_records, now - timedelta(hours=2, minutes=6), now)             #18/08/2025: sửa lấy phút thứ 50 -> lấy giờ tròn
     if idx2 is not None:
         rec2 = all_records[idx2]
         prev_label = _find_prev_label(sorted_filtered, idx2)
