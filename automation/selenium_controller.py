@@ -81,7 +81,7 @@ def login(user: str, password: str, link: str)-> tuple[webdriver.Chrome | None, 
         
 def navigate_to_add_matv(driver)-> tuple[webdriver.Chrome | None, bool]:
     try:
-        today = datetime.date.today().strftime('%Y/%-m/%-d')
+        today = date.today().strftime('%Y/%-m/%-d')
         path = f"add_maTV.asp?page_type=0&idd={IDD}&ngay={today}&ngayxem={today}"
         print(f"path:{path}")
         full_url = urljoin(LINK_REPORT, path)
