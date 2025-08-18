@@ -17,10 +17,11 @@ def run_every_hour(task_func):
 
     while True:
         now = datetime.now()
-        if now.minute < 55:
-            next_time = now.replace(minute=55, second=0, microsecond=0)
+        minute_wake = 60 -DELTA_MINUTE_EARLY
+        if now.minute < minute_wake:
+            next_time = now.replace(minute=minute_wake, second=0, microsecond=0)
         else:
-            next_time = (now + timedelta(hours=1)).replace(minute=55, second=0, microsecond=0)
+            next_time = (now + timedelta(hours=1)).replace(minute=minute_wake, second=0, microsecond=0)
         wait_seconds = (next_time - now).total_seconds()
         print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] waiting time {wait_seconds:.0f}s for next task...")
         time.sleep(wait_seconds)

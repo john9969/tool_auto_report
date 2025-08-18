@@ -6,7 +6,7 @@ from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import TimeoutException, WebDriverException
 import time
 from urllib.parse import urljoin
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,date
 from config import DELTA_MINUTE_EARLY
 LINK = 'http://madien2.kttvdb.vn/content/users/login.asp?ret_page=../../content/code/'
 LINK_REPORT = "http://madien2.kttvdb.vn/content/code/"
