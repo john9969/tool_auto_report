@@ -48,12 +48,12 @@ def main():
             logger.add_log("WARNING", "No records processed", tag="Main")
             print("No records processed")
             return
-        for water in all_records:
-            print(f"date: {water.date_time} water:{water.water_level_0}")
+        #for water in all_records:
+            #print(f"date: {water.date_time} water:{water.water_level_0}")
         all_records = filterWaterLevel.detect_outlier_by_median(all_records)
         for i in all_records:
             logger.add_log("INFO", f"Record: {i}", tag="Main")
-            print(f"Record: {i}")
+            #print(f"Record: {i}")
         list_report_point = trend_detected_processes(all_records)
         report = make_report(list_report_point,rain_record)
         print(f"Report: {report}")

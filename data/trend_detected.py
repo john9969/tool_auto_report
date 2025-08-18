@@ -284,60 +284,61 @@ def _trend_from_prev_label(
       2. Nếu refer_point nằm trong dải đứng -> trend = 0
       3. Ngược lại: peak -> 1 (downtrend), trough -> 2 (uptrend), mặc định 2
     """
-    n = len(all_records)
-    if n == 0 or not (0 <= refer_point < n):
-        return 2
+    #18/08/2025: bỏ xác nhận nước đứng bằng cách est trong 4h
+    # n = len(all_records)
+    # if n == 0 or not (0 <= refer_point < n):
+    #     return 2
 
-    last_point = all_records[-1]
-    last_time = last_point.date_time
-    min_dur = timedelta(hours=min_duration_hours)
+    # last_point = all_records[-1]
+    # last_time = last_point.date_time
+    # min_dur = timedelta(hours=min_duration_hours)
 
-    # Tính khoảng start hợp lệ: từ last_time - 8h đến last_time - 4h
-    t_lo = last_time - timedelta(hours=8)
-    t_hi = last_time - timedelta(hours=4)
+    # # Tính khoảng start hợp lệ: từ last_time - 8h đến last_time - 4h
+    # t_lo = last_time - timedelta(hours=8)
+    # t_hi = last_time - timedelta(hours=4)
 
-    candidate_starts = [
-        i for i, r in enumerate(all_records)
-        if t_lo <= r.date_time <= t_hi
-    ]
+    # candidate_starts = [
+    #     i for i, r in enumerate(all_records)
+    #     if t_lo <= r.date_time <= t_hi
+    # ]
 
-    standing_start = None
-    standing_end = None
+    # standing_start = None
+    # standing_end = None
 
-    for start in candidate_starts:
-        lvl_start = all_records[start].water_level_0
-        if lvl_start is None:
-            continue
+    # for start in candidate_starts:
+    #     lvl_start = all_records[start].water_level_0
+    #     if lvl_start is None:
+    #         continue
 
-        found_cross = False
-        for stop in range(start + 1, n):
-            lvl_stop = all_records[stop].water_level_0
-            if lvl_stop is None:
-                continue
+    #     found_cross = False
+    #     for stop in range(start + 1, n):
+    #         lvl_stop = all_records[stop].water_level_0
+    #         if lvl_stop is None:
+    #             continue
 
-            dlevel = abs(lvl_stop - lvl_start)
-            dt = all_records[stop].date_time - all_records[start].date_time
+    #         dlevel = abs(lvl_stop - lvl_start)
+    #         dt = all_records[stop].date_time - all_records[start].date_time
 
-            if dlevel >= lower_thresh:
-                found_cross = True
-                if dt > min_dur:
-                    standing_start, standing_end = start, stop - 1
-                break  # Dừng quét stop, xét start kế tiếp
+    #         if dlevel >= lower_thresh:
+    #             found_cross = True
+    #             if dt > min_dur:
+    #                 standing_start, standing_end = start, stop - 1
+    #             break  # Dừng quét stop, xét start kế tiếp
 
-        if not found_cross:
-            # Không vượt ngưỡng đến cuối  kiểm tra cả đoạn [start..last]
-            dlevel_end = abs(all_records[-1].water_level_0 - lvl_start)
-            dt_end = all_records[-1].date_time - all_records[start].date_time
-            if dlevel_end <= lower_thresh and dt_end >= min_dur:
-                standing_start, standing_end = start, n - 1
+    #     if not found_cross:
+    #         # Không vượt ngưỡng đến cuối  kiểm tra cả đoạn [start..last]
+    #         dlevel_end = abs(all_records[-1].water_level_0 - lvl_start)
+    #         dt_end = all_records[-1].date_time - all_records[start].date_time
+    #         if dlevel_end <= lower_thresh and dt_end >= min_dur:
+    #             standing_start, standing_end = start, n - 1
 
-        if standing_start is not None and standing_end is not None:
-            break  # đã tìm được dải đứng
+    #     if standing_start is not None and standing_end is not None:
+    #         break  # đã tìm được dải đứng
             
-    # Kiểm tra refer_point có nằm trong dải đứng không
-    if standing_start is not None and standing_end is not None:
-        if standing_start <= refer_point <= standing_end:
-            return 0
+    # # Kiểm tra refer_point có nằm trong dải đứng không
+    # if standing_start is not None and standing_end is not None:
+    #     if standing_start <= refer_point <= standing_end:
+    #         return 0
 
     # Nếu không nằm trong nước đứng → trend theo prev_label
     if all_records[refer_point].water_level_0 < water_reference:
@@ -345,11 +346,8 @@ def _trend_from_prev_label(
     elif all_records[refer_point].water_level_0 > water_reference:
         return 2
     else:
-        if prev_label == "peak":
-            return 1
-        elif prev_label == "trough":
-            return 2
-        return 2  # mặc định uptrend
+        return 0
+    #18/08/2025: Hết chỉnh sửa
 
 def prepare_points(
     all_records: List[WaterRecord],
