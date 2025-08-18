@@ -5,6 +5,7 @@ from logger.logger import LoggerFactory
 from data.trend_detected import ReportPoint
 from datetime import timedelta
 import json
+from config import DELTA_MINUTE_EARLY
 SERIAL_NUMBER = "74165"
 
 import os
@@ -91,14 +92,14 @@ def make_report(
     
     report = SERIAL_NUMBER + " 22 "
     delta_hour = 4
-    current_time = datetime.now()
+    current_time = datetime.now() + timedelta(minutes= DELTA_MINUTE_EARLY )
     for report_point in list_report_point:
         time_report = current_time - timedelta(hours= delta_hour)
         ch = f"{time_report.day:02d}{time_report.hour:02d} "
         ch += f"{report_point.trend}{report_point.water_level//10:04d} "
         report += ch
         delta_hour -= 2
-    report += f"44 {datetime.now().day:02d}{datetime.now().hour:02d} 3"
+    report += f"44 {current_time.day:02d}{current_time.hour:02d} 3"
     report += f"{rain_level:04d}="
     
     return report

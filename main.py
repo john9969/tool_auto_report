@@ -10,16 +10,18 @@ from config import API_URL_GET_WATER_LEVEL,API_URL_GET_RAIN_LEVEL
 import traceback
 import time
 from datetime import datetime, timedelta
-
+from config import DELTA_MINUTE_EARLY 
 logger = LoggerFactory()
 filterWaterLevel = FilterWaterLevel()
 def run_every_hour(task_func):
 
     while True:
         now = datetime.now()
-        # Tính thời điểm đầu giờ kế tiếp
-        next_hour = (now + timedelta(hours=1)).replace(minute=2, second=0, microsecond=0) #18/08/2025: sửa bắt đầu đo phút thứ 2 để lấy điểm giờ tròn đó
-        wait_seconds = (next_hour - now).total_seconds()
+        if now.minute < 55:
+            next_time = now.replace(minute=55, second=0, microsecond=0)
+        else:
+            next_time = (now + timedelta(hours=1)).replace(minute=55, second=0, microsecond=0)
+        wait_seconds = (next_time - now).total_seconds()
         print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] waiting time {wait_seconds:.0f}s for next task...")
         time.sleep(wait_seconds)
         #time.sleep(1)
@@ -58,7 +60,8 @@ def main():
         report = make_report(list_report_point,rain_record)
         print(f"Report: {report}")
         logger.add_log("INFO", f"report:{report}", tag="Main")
-        if(datetime.now().hour == 1 or datetime.now().hour == 7 or datetime.now().hour == 13 or datetime.now().hour == 19):
+        current_hour = datetime.now() + timedelta(minutes=DELTA_MINUTE_EARLY)
+        if(current_hour == 1 or current_hour  == 7 or current_hour == 13 or current_hour == 19):
             report
         else:
             report = "checking"
@@ -80,5 +83,5 @@ def main():
         traceback.print_exc()
 if __name__ == "__main__":
  #   startup.add_to_startup()
-    #run_every_hour(main)
-    main()
+    run_every_hour(main)
+    #main()

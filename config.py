@@ -4,3 +4,4 @@ API_URL_GET_RAIN_LEVEL = "http://222.255.11.74:8085/Data/_DataObservationByDevic
 ID_WORKSTATION = "YOUR_WORKSTATION_ID"
 # Water level filter configuration
 DElTA = 50
+DELTA_MINUTE_EARLY = 5

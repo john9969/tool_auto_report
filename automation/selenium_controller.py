@@ -6,7 +6,8 @@ from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import TimeoutException, WebDriverException
 import time
 from urllib.parse import urljoin
-import datetime
+from datetime import datetime, timedelta
+from config import DELTA_MINUTE_EARLY
 LINK = 'http://madien2.kttvdb.vn/content/users/login.asp?ret_page=../../content/code/'
 LINK_REPORT = "http://madien2.kttvdb.vn/content/code/"
 USER = 'tvhanoi'
@@ -103,8 +104,8 @@ def navigate_to_add_matv(driver)-> tuple[webdriver.Chrome | None, bool]:
         return None,False
 
 def select_current_hour_and_confirm(driver)-> tuple[webdriver.Chrome | None, bool]:
-    now = datetime.datetime.now()
-    hour = now.hour if now.hour != 0 else 24
+    hour = (datetime.now() + timedelta(minutes=DELTA_MINUTE_EARLY)).hour
+    hour = hour if hour != 0 else 24
     print(f"[Select] Current hour: {hour}")
     try:
         select_el = driver.find_element(By.NAME, 'gio')

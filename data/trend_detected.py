@@ -371,6 +371,7 @@ def prepare_points(
 
     points: List[ReportPoint] = []
     # 16/08/2025: Sửa lại cách tính lên xuống dựa vào điểm trước đó và so sánh mực nước
+    #18/08/2015: sửa giờ đo sang phút 55
     idx_reference = _pick_first_in_window(all_records, now - timedelta(hours=6, minutes=6), now)    #18/08/2025: sửa lấy phút thứ 50 -> lấy giờ tròn
     if idx_reference is not None:
         water_reference = all_records[idx_reference].water_level_0
@@ -408,7 +409,7 @@ def prepare_points(
         ))
     for point in points:
         print(f"water: {point.water_level}, trend: {point.trend}, hour: {point.date_time.hour}:{point.date_time.minute}")
-
+        LoggerFactory().add_log("INFO",f"water: {point.water_level}, trend: {point.trend}, hour: {point.date_time.hour}:{point.date_time.minute}", tag="ReportMaking")
     # 16/08/2025: Hết thay đổi  
     return points
 
