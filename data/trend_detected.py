@@ -271,7 +271,6 @@ def _trend_from_prev_label(
     all_records: List[WaterRecord],
     refer_point: int,
     water_reference:int,            #16/08/2025: Thêm sửa lại cách tính trend 
-    prev_label: Optional[str],
     lower_thresh: int = 2,          # delta mực nước
     min_duration_hours: int = 4     # thời gian tối thiểu 4h
 ) -> int:
@@ -284,7 +283,7 @@ def _trend_from_prev_label(
       2. Nếu refer_point nằm trong dải đứng -> trend = 0
       3. Ngược lại: peak -> 1 (downtrend), trough -> 2 (uptrend), mặc định 2
     """
-    #18/08/2025: bỏ xác nhận nước đứng bằng cách est trong 4h
+    # # 18/08/2025: bỏ xác nhận nước đứng bằng cách est trong 4h
     # n = len(all_records)
     # if n == 0 or not (0 <= refer_point < n):
     #     return 2
@@ -339,7 +338,9 @@ def _trend_from_prev_label(
     # if standing_start is not None and standing_end is not None:
     #     if standing_start <= refer_point <= standing_end:
     #         return 0
-
+        
+    # # 26/08/2025: Hết phần thêm xác nhận nước đúng
+    
     # Nếu không nằm trong nước đứng → trend theo prev_label
     if all_records[refer_point].water_level_0 < water_reference:
         return 1
@@ -348,6 +349,27 @@ def _trend_from_prev_label(
     else:
         return 0
     #18/08/2025: Hết chỉnh sửa
+
+def _is_stop_water(    
+    water_point:List[int]
+) -> List[int]:
+    # kiểm tra input có đúng 4 giá trị không
+    if len(water_point) != 4:
+        raise ValueError("water_point phải có đúng 4 giá trị")
+    
+    # tìm giá trị lớn nhất và nhỏ nhất trong 4 giá trị
+    max_val = max(water_point)
+    min_val = min(water_point)
+
+    # nếu độ chênh lệch không quá 20
+    if max_val - min_val <= 30:
+        print("Detected stop water")
+        LoggerFactory().add_log("INFO",f"Detected stop water", tag="ReportMaking")
+        return [1, 0, 0]
+    else:
+        LoggerFactory().add_log("INFO",f"Detected flowing water", tag="ReportMaking")
+        print("Detected flowing water")
+        return [1, 1, 1]
 
 def prepare_points(
     all_records: List[WaterRecord],
@@ -385,7 +407,9 @@ def prepare_points(
             trend=_trend_from_prev_label(all_records, idx1, water_reference, prev_label),
             date_time=_naive(rec1.date_time)
         ))
-
+    else:
+        print("idx3 not found")
+        LoggerFactory().add_log("BUG",f"idx3 not found", tag="ReportMaking")
     # Điểm 2: cửa sổ 2 giờ
     idx2 = _pick_first_in_window(all_records, now - timedelta(hours=2, minutes=6), now)             #18/08/2025: sửa lấy phút thứ 50 -> lấy giờ tròn
     if idx2 is not None:
@@ -396,9 +420,12 @@ def prepare_points(
             trend=_trend_from_prev_label(all_records, idx2, all_records[idx1].water_level_0, prev_label),
             date_time=_naive(rec2.date_time)
         ))
-
+    else:
+        print("idx3 not found")
+        LoggerFactory().add_log("BUG",f"idx3 not found", tag="ReportMaking")
     # Điểm 3: bản ghi mới nhất
     idx3 = _pick_latest(all_records)
+    #idx3 = _pick_first_in_window(all_records, now - timedelta(hours=0, minutes=15), now)
     if idx3 is not None:
         rec3 = all_records[idx3]
         prev_label = _find_prev_label(sorted_filtered, idx3)
@@ -407,6 +434,20 @@ def prepare_points(
             trend=_trend_from_prev_label(all_records, idx3,  all_records[idx2].water_level_0, prev_label),
             date_time=_naive(rec3.date_time)
         ))
+    else:
+        print("idx3 not found")
+        LoggerFactory().add_log("BUG",f"idx3 not found", tag="ReportMaking")
+
+    list_trend = _is_stop_water([ 
+                                 all_records[idx_reference].water_level_0,
+                                 points[0].water_level,
+                                 points[1].water_level,
+                                 points[2].water_level])
+
+    points[0].trend *= list_trend[0]
+    points[1].trend *= list_trend[1]
+    points[2].trend *= list_trend[2]
+    
     for point in points:
         print(f"water: {point.water_level}, trend: {point.trend}, hour: {point.date_time.hour}:{point.date_time.minute}")
         LoggerFactory().add_log("INFO",f"water: {point.water_level}, trend: {point.trend}, hour: {point.date_time.hour}:{point.date_time.minute}", tag="ReportMaking")
