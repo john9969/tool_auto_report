@@ -6,8 +6,35 @@ from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo  # Python 3.9+
-
+from config import DELTA_MINUTE_EARLY
 Hour_Delta = 100
+def read_rain_level(filename: str = "rain_level.txt") -> float:
+    """
+    Đọc dữ liệu mưa từ file có format { rain_level_19h: <số> }
+    Trả về giá trị float.
+    """
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+        # content ví dụ: "{ rain_level_19h: 25.7 }"
+        # Tách phần số
+        level_str = content.split(":")[1].replace("}", "").strip()
+        print(f"Rain level from file: {float(level_str):.2f}")
+        return float(level_str)
+    except (FileNotFoundError, ValueError, IndexError) as e:
+        print(f"error when read file {filename}: {e}")
+        return 0.0
+def write_rain_level(level: float, filename: str = "rain_level.txt"):
+    """
+    Ghi dữ liệu mưa vào file với định dạng { rain_level_19h: <số> }
+
+    :param level: Số liệu mưa (float hoặc int)
+    :param filename: Tên file lưu dữ liệu
+    """
+    data = f"{{ rain_level_19h: {level} }}\n"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(data)
+    print(f"Done update rain_level {filename}: {data.strip()}")
 @dataclass
 class WaterRecord:
     date_time: datetime
@@ -112,6 +139,8 @@ def parse_water_records_range(html: str) -> List[WaterRecord]:
 
 def parse_rain_record(json_data:str) -> int:
     # Parse dữ liệu từ JSON nếu là string
+    
+    
     if isinstance(json_data, str):
         data = json.loads(json_data)
     else:
@@ -149,20 +178,33 @@ def parse_rain_record(json_data:str) -> int:
         """Find the newest record whose local time <= target_dt_local."""
         candidates = [r for r in enriched if r["_dt_local"] <= target_dt_local]
         return candidates[-1] if candidates else None
-
-    rec_minus_7h: Optional[Dict[str, Any]] = None
+    hour = (datetime.now() + timedelta(minutes= DELTA_MINUTE_EARLY)).hour
+    if hour == 0:
+        target_local = latest["_dt_local"] - timedelta(hours=5) #17/08/2025: Thêm sửa báo sai lượng mưa
+                                                                #25/08/2025: Thêm phần cộng lượng mưa ngày hôm trước
+        print(f"Target_local: {target_local}")
+        rec_minus_5h = find_at_or_before(target_local)
+        if rec_minus_5h:
+            print(f"Rain -7h: {rec_minus_5h.get('BAC', 0)}")
+            # print(f"Rain lastest: {latest.get('BAC', 0)}")
+            rain_level = latest.get("BAC", 0) - rec_minus_5h.get("BAC", 0)
+            write_rain_level(rain_level)
+            
+    rec_minus_6h: Optional[Dict[str, Any]] = None
     if latest:
         target_local = latest["_dt_local"] - timedelta(hours=6) #17/08/2025: Thêm sửa báo sai lượng mưa
         print(f"Target_local: {target_local}")
-        rec_minus_7h = find_at_or_before(target_local)
-        if rec_minus_7h:
-            print(f"Rain -7h: {rec_minus_7h.get('BAC', 0)}")
+        rec_minus_6h = find_at_or_before(target_local)
+        if rec_minus_6h:
+            print(f"Rain -7h: {rec_minus_6h.get('BAC', 0)}")
             # print(f"Rain lastest: {latest.get('BAC', 0)}")
-            rain_level = latest.get("BAC", 0) - rec_minus_7h.get("BAC", 0)
+            rain_level = latest.get("BAC", 0) - rec_minus_6h.get("BAC", 0)
         else:
             rain_level = latest.get("BAC", 0)
     else:
-        return 0         
+        return 0  
+    if hour == 1:
+        rain_level += read_rain_level()       
     # Lấy BAC của bản ghi đầu tiên (mới nhất)
     print(f"Rain level: {rain_level}")
     if 0.1 <= rain_level <= 0.4:

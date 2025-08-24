@@ -84,5 +84,5 @@ def main():
         traceback.print_exc()
 if __name__ == "__main__":
  #   startup.add_to_startup()
-    run_every_hour(main)
-    #main()
+    #run_every_hour(main)
+    main()
