@@ -362,7 +362,7 @@ def _is_stop_water(
     min_val = min(water_point)
 
     # nếu độ chênh lệch không quá 20
-    if max_val - min_val <= 30:
+    if max_val - min_val <= 20:
         print("Detected stop water")
         LoggerFactory().add_log("INFO",f"Detected stop water", tag="ReportMaking")
         return [1, 0, 0]
