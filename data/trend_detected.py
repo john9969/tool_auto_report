@@ -447,7 +447,11 @@ def prepare_points(
     points[0].trend *= list_trend[0]
     points[1].trend *= list_trend[1]
     points[2].trend *= list_trend[2]
-    
+    if points[1].trend == 0:
+        points[1].water_level = points[0].water_level
+    if points[2].trend == 0:
+        points[2].water_level = points[1].water_level
+        
     for point in points:
         print(f"water: {point.water_level}, trend: {point.trend}, hour: {point.date_time.hour}:{point.date_time.minute}")
         LoggerFactory().add_log("INFO",f"water: {point.water_level}, trend: {point.trend}, hour: {point.date_time.hour}:{point.date_time.minute}", tag="ReportMaking")
