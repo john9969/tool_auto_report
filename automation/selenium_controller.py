@@ -140,6 +140,17 @@ def fill_content_and_submit(driver, content: str)-> tuple[webdriver.Chrome | Non
         if content != "checking":
             print("[Fill] Content is not 'checking', clicking submit")
             submit_btn.click()
+            # Chờ 10 giây cho trang load
+            time.sleep(10)
+            # Lấy toàn bộ source code của trang
+            page_source = driver.page_source
+            if content in page_source:
+                print("[Fill] Content found on page. PASS")
+                return None, True
+            else:
+                print("[Fill] Content NOT found on page. FAIL")
+                time.sleep(10)
+                return None, False
         print(f"[fill] submitted content: {content}")
         driver.quit()
         return None,True
