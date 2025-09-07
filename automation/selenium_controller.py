@@ -208,26 +208,26 @@ def selenium_controller(ma_dien_bao:str):
         print("[Main] Starting script")
         driver,stt = login(USER, PASS, LINK)
         if stt == False:
-            print(f"[Main] Report failed, retrying in 60 seconds")
-            time.sleep(60)
+            print(f"[Main] Report failed, retrying in 30 seconds")
+            time.sleep(30)
             times_request -= 1
             continue 
         driver,stt = navigate_to_add_matv (driver)
         if stt == False:
-            print(f"[Main] Report failed, retrying in 60 seconds")
-            time.sleep(60)
+            print(f"[Main] Report failed, retrying in 30 seconds")
+            time.sleep(30)
             times_request -= 1
             continue 
         driver,stt = select_current_hour_and_confirm(driver)
         if stt == False:
-            print(f"[Main] Report failed, retrying in 60 seconds")
-            time.sleep(60)
+            print(f"[Main] Report failed, retrying in 30 seconds")
+            time.sleep(30)
             times_request -= 1
             continue 
         driver,stt = fill_content_and_submit(driver, content= ma_dien_bao)
         if stt == False:
-            print(f"[Main] Report failed, retrying in 60 seconds")
-            time.sleep(60)
+            print(f"[Main] Report failed, retrying in 30 seconds")
+            time.sleep(30)
             times_request -= 1
             continue 
     if not stt:

@@ -66,7 +66,7 @@ def main():
             report
         else:
             report = "checking"
-        payload = {'text': "Trạm hà nội " + report}
+        payload = {'text': "tvhn" + report}
         selenium_controller(report)
         try:
             response = requests.post("https://donuoctrieuduong.xyz/water_level_api/test/update_water.php", json=payload)
