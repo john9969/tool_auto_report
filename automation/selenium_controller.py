@@ -146,10 +146,12 @@ def fill_content_and_submit(driver, content: str)-> tuple[webdriver.Chrome | Non
             page_source = driver.page_source
             if content in page_source:
                 print("[Fill] Content found on page. PASS")
+                driver.quit()
                 return None, True
             else:
                 print("[Fill] Content NOT found on page. FAIL")
                 time.sleep(10)
+                driver.quit()
                 return None, False
         print(f"[fill] submitted content: {content}")
         driver.quit()
