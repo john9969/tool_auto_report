@@ -17,7 +17,8 @@ def run_every_hour(task_func):
 
     while True:
         now = datetime.now()
-        minute_wake = 60 -DELTA_MINUTE_EARLY
+        # minute_wake = 60 -DELTA_MINUTE_EARLY #case wake up 7 minutesearly
+        minute_wake = DELTA_MINUTE_EARLY  # case wake up 1 minute early
         if now.minute < minute_wake:
             next_time = now.replace(minute=minute_wake, second=0, microsecond=0)
         else:
