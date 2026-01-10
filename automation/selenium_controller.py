@@ -3,7 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import Select
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
 import time
 from urllib.parse import urljoin
 import datetime
@@ -138,6 +138,18 @@ def fill_content_and_submit(driver, content: str)-> tuple[webdriver.Chrome | Non
         if content != "checking":
             print("[Fill] Content is not 'checking', clicking submit")
             submit_btn.click()
+            time.sleep(10)
+            
+            page_source = driver.page_source
+            if content in page_source:
+                print("[Fill] Content found on page. PASS")
+                driver.quit()
+                return None, True
+            else:
+                print("[Fill] Content NOT found on page. FAIL")
+                time.sleep(10)
+                driver.quit()
+                return None, False
         print(f"[fill] submitted content: {content}")
         driver.quit()
         return None,True
@@ -194,25 +206,25 @@ def selenium_controller(ma_dien_bao:str):
         driver,stt = login(USER, PASS, LINK)
         if stt == False:
             print(f"[Main] Report failed, retrying in 60 seconds")
-            time.sleep(60)
+            time.sleep(30)
             times_request -= 1
             continue 
         driver,stt = navigate_to_add_matv (driver)
         if stt == False:
             print(f"[Main] Report failed, retrying in 60 seconds")
-            time.sleep(60)
+            time.sleep(30)
             times_request -= 1
             continue 
         driver,stt = select_current_hour_and_confirm(driver)
         if stt == False:
             print(f"[Main] Report failed, retrying in 60 seconds")
-            time.sleep(60)
+            time.sleep(30)
             times_request -= 1
             continue 
         driver,stt = fill_content_and_submit(driver, content= ma_dien_bao)
         if stt == False:
             print(f"[Main] Report failed, retrying in 60 seconds")
-            time.sleep(60)
+            time.sleep(30)
             times_request -= 1
             continue 
     if not stt:
