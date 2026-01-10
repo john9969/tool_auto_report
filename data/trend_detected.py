@@ -249,11 +249,11 @@ def check_last_point(
             return np.array(absolute_peaks), np.array(absolute_troughs)
 
     # Xác định window 3h, Trường hợp không có peak hoặc trough nào 
-    window_start = last_time - timedelta(hours=3)
+    window_start = last_time - timedelta(hours=4)
     rec_3h = next((r for r in records if r.date_time >= window_start), records[0])
 
 
-    inner_start = window_start + timedelta(minutes=30)
+    inner_start = window_start #+ timedelta(minutes=30)
     inner_end   = last_time     - timedelta(minutes=30)
     window_recs = [idx for (idx, r) in enumerate(records) if window_start <= r.date_time] # lọc các bản ghi trong khoảng 3h, trừ 30 phút đầu và cuối
 
@@ -454,12 +454,12 @@ def filter_peaks_troughs( records: List[WaterRecord],
 ) -> Tuple[np.ndarray, np.ndarray]:
     absolute_peaks_filtered,absolute_troughs_filtered = remove_duplicate_peaks_troughts(records, absolute_peaks, absolute_troughs)
     absolute_peaks_after_remove_closeer, absolute_troughts_after_remove_closeer = remove_closed_peaks_troughts(records, absolute_peaks_filtered.tolist(),absolute_troughs_filtered.tolist(),height= 50,width= 40)
-    # write_chart(
-    #     raw_value = np.array([r.water_level_0 for r in records], dtype='int'),
-    #     smooth_value =  np.array([r.water_level_0 for r in records], dtype='int'),
-    #     peaks =      absolute_peaks_after_remove_closeer,
-    #     troughs =    absolute_troughts_after_remove_closeer
-    # )
+    #write_chart(
+    #    raw_value = np.array([r.water_level_0 for r in records], dtype='int'),
+    #    smooth_value =  np.array([r.water_level_0 for r in records], dtype='int'),
+    #    peaks =      absolute_peaks_after_remove_closeer,
+    #    troughs =    absolute_troughts_after_remove_closeer
+    #)
     return absolute_peaks_after_remove_closeer, absolute_troughts_after_remove_closeer
 def trend_detected_processes(
     all_records: List[WaterRecord],
