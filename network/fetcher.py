@@ -1,6 +1,6 @@
 import requests
 import json
-from config import API_URL
+from config import API_URL,API_URL_EXTERNAL
 MINUTE_DEVIDE = 60*24*4
 class DataFetcher:
     def fetch(self):
@@ -62,7 +62,27 @@ class DataFetcher:
             data_pack2 = fetch_range(data_pack_2_begin_date, data_pack_2_end_date)
             data_pack= data_pack1 + data_pack2
         return data_pack
+    
+    def fetch_api_extention(self):
+        """
+        Fetch water level data, splitting across month boundary if needed,
+        print and log fetched data.
+        """
+        from logger.logger import LoggerFactory
 
+        logger = LoggerFactory()
+
+        def fetch_range():
+            resp = requests.get(API_URL_EXTERNAL)
+            resp.raise_for_status()
+            data = resp.json()
+            logger.add_log("INFO", f"API: {API_URL_EXTERNAL}", tag="DataFetcher")
+            logger.add_log("INFO", f"Received {len(data)} records", tag="DataFetcher")
+            logger.add_log("INFO", f"Data: {data}", tag="DataFetcher")
+            return data
+
+        return fetch_range()["data"]
+    
     def fetch_test(self, file_path="test/data_test.txt"):
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)

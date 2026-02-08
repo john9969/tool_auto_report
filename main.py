@@ -35,7 +35,7 @@ def run_every_hour(task_func):
 def main():
     try:
         logger.add_log("INFO", "**********************START MAIN APP**********************", tag="Main")
-        data = fetcher.fetch()
+        data = fetcher.fetch_api_extention()
         if not data:
             logger.add_log("WARNING", "No data fetched", tag="Main")
             return
