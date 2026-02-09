@@ -4,6 +4,7 @@ from logger.logger import LoggerFactory
 
 @dataclass
 class WaterRecord:
+    id: int
     date_time: datetime
     water_level_0: int
     water_level_1: int
@@ -31,6 +32,7 @@ class DataProcessor:
         for index, item in enumerate(data):
             try:
                 record = WaterRecord(
+                    id = index,
                     date_time=datetime.strptime(item.get("thoigianReport", ""), "%Y-%m-%dT%H:%M:%S"),
                     water_level_0=int(item.get("mucNuoc", 0)*10),
                     water_level_1=int(item.get("mucNuoc", 0)*10),
