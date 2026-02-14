@@ -28,11 +28,11 @@ class DataProcessor:
         if not isinstance(data, list):
             self.logger.add_log("WARNING", "Input data is not a list", tag="DataProcessor")
             return []
-
+        _id = 0
         for index, item in enumerate(data):
             try:
                 record = WaterRecord(
-                    id = index,
+                    id = _id,
                     date_time=datetime.strptime(item.get("thoigianReport", ""), "%Y-%m-%dT%H:%M:%S"),
                     water_level_0=int(item.get("mucNuoc", 0)*10),
                     water_level_1=int(item.get("mucNuoc", 0)*10),
@@ -40,6 +40,7 @@ class DataProcessor:
                 )
                 if(record.water_level_0 > 0):
                     self.buffer.append(record)
+                    _id+=1
                     
                 self.logger.add_log("INFO", f"Buffered record[{index}]: {record}", tag="DataProcessor")
             except Exception as e:
