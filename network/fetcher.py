@@ -53,7 +53,11 @@ class DataFetcher:
                 data_pack_2_begin_date = now.replace(day=1, hour=0, minute=0, second=0)
                 data_pack_2_end_date = now
             else:
-                data_pack_1_end_date = begin.replace(day=30, hour=23, minute=59, second=59)
+                if(begin.month ==2):
+                    _day = 28
+                else:
+                    _day = 30
+                data_pack_1_end_date = begin.replace(day=_day, hour=23, minute=59, second=59)
                 data_pack_1_begin_date = begin
                 data_pack_2_begin_date = now.replace(day=1, hour=0, minute=0, second=0)
                 data_pack_2_end_date = now
